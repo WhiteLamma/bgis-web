@@ -89,7 +89,7 @@ function DutiesView() {
           </Empty>
         ) : (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table stack">
               <thead>
                 <tr>
                   <th>Time</th>
@@ -108,14 +108,14 @@ function DutiesView() {
                   const t = rec ? summarise(size, rec.statuses) : null;
                   return (
                     <tr key={d.id} className="is-link" onClick={() => router.push(`/dashboard/duties/${d.id}`)}>
-                      <td style={{ whiteSpace: "nowrap" }}>
+                      <td style={{ whiteSpace: "nowrap" }} data-label="Time">
                         <span className="cell-main">{fmtTime(d.start)}</span>
                         <div className="cell-sub">to {fmtTime(d.end)}</div>
                       </td>
                       <td className="cell-main">{d.checkpoint}{d.mandatoryEscalation && <div className="cell-sub">If missed, goes to the Principal</div>}</td>
-                      <td>{d.group}<div className="cell-sub">{plural(size, "child", "children")}</div></td>
-                      <td>{d.staffId === user.id ? <b>You</b> : staffName(d.staffId) || <span className="cell-sub">Unassigned</span>}</td>
-                      <td className="num">
+                      <td data-label="For">{d.group}<div className="cell-sub">{plural(size, "child", "children")}</div></td>
+                      <td data-label="Marked by">{d.staffId === user.id ? <b>You</b> : staffName(d.staffId) || <span className="cell-sub">Unassigned</span>}</td>
+                      <td className="num" data-label="Children seen">
                         {t ? (
                           <>
                             <b>{t.accounted}</b><span className="cell-sub"> of {t.total}</span>
@@ -123,9 +123,9 @@ function DutiesView() {
                           </>
                         ) : <span className="cell-sub">—</span>}
                       </td>
-                      <td><Chip tone={STATUS_UI[d.status].tone}>{STATUS_UI[d.status].label}</Chip></td>
+                      <td className="stack-corner"><Chip tone={STATUS_UI[d.status].tone}>{STATUS_UI[d.status].label}</Chip></td>
                       {canReassign(user.role) && (
-                        <td className="num">
+                        <td className="num stack-action">
                           {d.state !== "submitted" && (
                             <button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); reassign(d); }} aria-label={`Give ${d.checkpoint}, ${d.group} to someone else`}>
                               <Icon name="swap" size={18} />Give to someone

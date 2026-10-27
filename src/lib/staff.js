@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { invalidate } from "./cache";
 
 /**
  * Maps a `staff` row to the shape the app uses. The database is snake_case;
@@ -63,6 +64,7 @@ export async function fetchStaffByEmail(email) {
 }
 
 export async function updateOwnPhone(staffId, phone) {
+  invalidate("staff");
   const { data, error } = await supabase
     .from("staff")
     .update({ phone })

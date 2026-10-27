@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabase";
+import { MINUTE, cached } from "./cache";
 
 /**
  * The activity log.
@@ -41,7 +42,12 @@ export const fromRow = (r) => ({
  * everything gets everything, and everyone else is already narrowed by the
  * policy in migrations/008 before this filter is applied.
  */
-export async function fetchAuditLog({ limit = 100, severity = null, since = null } = {}) {
+export async function fetchAuditLog(opts = {}) {
+  // A minute is fresh enough for a log people read, not watch.
+  return cached(`audit:${JSON.stringify(opts)}`, MINUTE, () => readAuditLog(opts));
+}
+
+async function readAuditLog({ limit = 100, severity = null, since = null } = {}) {
   let query = supabase
     .from("audit_log")
     .select("*, duties(day, checkpoint_id, checkpoints(name))")

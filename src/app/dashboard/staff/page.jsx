@@ -134,7 +134,7 @@ export default function StaffPage() {
         </div>
         {error ? <ErrorPanel message={error} onRetry={refresh} /> : loading ? <Skeleton rows={6} /> : visible.length === 0 ? <Empty>No staff match.</Empty> : (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table stack">
               <thead><tr><th>Name</th><th>Role</th><th>Class</th><th>Contact</th><th className="num">Duties today</th></tr></thead>
               <tbody>
                 {visible.map((s) => (
@@ -145,10 +145,10 @@ export default function StaffPage() {
                         <span className="cell-main">{s.name}{s.id === user.id && <span className="cell-sub"> · you</span>}</span>
                       </span>
                     </td>
-                    <td><Chip tone={s.role === "teacher" ? "quiet" : "info"} plain>{roleLabel(s.role)}</Chip></td>
-                    <td>{s.classLabel || <span className="cell-sub">—</span>}</td>
-                    <td className="cell-sub">{s.email}{s.phone ? <><br />{s.phone}</> : null}</td>
-                    <td className="num cell-main">{dutyCount[s.id] || <span className="cell-sub">0</span>}</td>
+                    <td className="stack-corner"><Chip tone={s.role === "teacher" ? "quiet" : "info"} plain>{roleLabel(s.role)}</Chip></td>
+                    <td data-label="Class">{s.classLabel || <span className="cell-sub">—</span>}</td>
+                    <td className="cell-sub" data-label="Contact">{s.email}{s.phone ? <><br />{s.phone}</> : null}</td>
+                    <td className="num" data-label="Duties today">{dutyCount[s.id] || <span className="cell-sub">0</span>}</td>
                   </tr>
                 ))}
               </tbody>

@@ -71,7 +71,7 @@ export default function StudentsPage() {
           <Empty title="No students match">Try a different search or class.</Empty>
         ) : (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table stack">
               <thead>
                 <tr>
                   <th>Roll</th>
@@ -88,13 +88,13 @@ export default function StudentsPage() {
                   const leave = openLeaves[s.adm];
                   return (
                     <tr key={s.adm} className="is-link" onClick={() => router.push(`/dashboard/students/${encodeURIComponent(s.adm)}`)}>
-                      <td className="cell-sub">{s.roll ?? "—"}</td>
+                      <td className="cell-sub" data-label="Roll">{s.roll ?? "—"}</td>
                       <td className="cell-main">{s.name}{s.remedial && <span className="cell-sub"> · remedial</span>}</td>
-                      <td>{s.label}</td>
-                      <td>{TYPE_LABEL[s.type] || "—"}</td>
-                      <td>{s.house || <span className="cell-sub">—</span>}</td>
-                      <td className="cell-sub">{s.adm}</td>
-                      <td>{leave ? <Chip tone="info">{statusLabel(leave.status)} since {leave.outDay.slice(5)}</Chip> : <Chip tone="ok" plain>On campus</Chip>}</td>
+                      <td data-label="Class">{s.label}</td>
+                      <td data-label="Type">{TYPE_LABEL[s.type] || "—"}</td>
+                      <td data-label="House">{s.house || <span className="cell-sub">—</span>}</td>
+                      <td className="cell-sub" data-label="Admission no.">{s.adm}</td>
+                      <td className="stack-corner">{leave ? <Chip tone="info">{statusLabel(leave.status)} since {leave.outDay.slice(5)}</Chip> : <Chip tone="ok" plain>On campus</Chip>}</td>
                     </tr>
                   );
                 })}

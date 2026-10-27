@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabase";
+import { MINUTE, cached, invalidate } from "./cache";
 import { fromRow as staffFromRow } from "./staff";
 
 /**
@@ -90,6 +91,10 @@ export async function linkStaffAccount() {
 
 /** Every request still waiting, newest first. Coordinator and admin only. */
 export async function fetchPendingRequests() {
+  return cached("requests", MINUTE, readPendingRequests);
+}
+
+async function readPendingRequests() {
   const { data, error } = await supabase
     .from("staff_requests")
     .select("*")
@@ -107,6 +112,8 @@ export async function fetchPendingRequests() {
  * means duty staff with no class of their own, which is a normal outcome.
  */
 export async function approveRequest(requestId, classKey = null) {
+  invalidate("requests");
+  invalidate("staff");
   const { data, error } = await supabase.rpc("approve_staff_request", {
     p_request: requestId,
     p_class_key: classKey || null,
@@ -116,6 +123,7 @@ export async function approveRequest(requestId, classKey = null) {
 }
 
 export async function rejectRequest(requestId, note) {
+  invalidate("requests");
   const { data, error } = await supabase.rpc("reject_staff_request", {
     p_request: requestId,
     p_note: note || null,

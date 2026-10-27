@@ -394,14 +394,8 @@ button.row-link:disabled { cursor: default; }
 }
 
 @media (max-width: 900px) {
+  /* The frame (top bar, tab bar, "More" sheet) lives in shell.css. */
   .dash { grid-template-columns: minmax(0, 1fr); }
-  .side { position: fixed; z-index: 40; inset: 0 auto 0 0; width: min(320px, 88vw); transform: translateX(-102%); transition: transform .22s ease; }
-  .side.is-open { transform: none; box-shadow: 0 0 0 100vmax #12201f80; }
-  .mobile-bar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 16px; background: var(--ground); box-shadow: inset 0 -1px 0 var(--border); }
-  .mobile-bar button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 2px solid var(--control); border-radius: 99px; background: var(--surface); color: var(--text); font-weight: 700; }
-  .mobile-bar b { font: 700 20px var(--serif); }
-  .main { padding: 24px 16px 64px; }
-  .page-title { font-size: 26px; }
   .tl-scale { margin-left: 120px; }
   .tl-row { grid-template-columns: 120px minmax(0, 1fr); }
   .tl-name small { display: none; }
@@ -417,8 +411,6 @@ button.row-link:disabled { cursor: default; }
   .figures { grid-template-columns: minmax(0, 1fr); }
   .figure + .figure { box-shadow: inset 0 1px 0 var(--panel-strong) !important; }
   .row-side { padding-left: 0; }
-  .head-actions, .head-actions > * { width: 100%; }
-  .daypick { justify-content: space-between; }
 }
 
 @media print {

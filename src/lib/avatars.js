@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { invalidate } from "./cache";
 
 const BUCKET = "avatars";
 
@@ -72,6 +73,7 @@ export async function uploadAvatar(file, staffId) {
     .update({ photo_url: url })
     .eq("id", staffId);
   if (dbError) throw new Error(dbError.message);
+  invalidate("staff");
 
   return url;
 }
@@ -96,4 +98,5 @@ export async function removeAvatar(staffId) {
     .update({ photo_url: null })
     .eq("id", staffId);
   if (dbError) throw new Error(dbError.message);
+  invalidate("staff");
 }

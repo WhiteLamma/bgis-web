@@ -8,6 +8,7 @@ import { useMarkingTotals } from "@/lib/history";
 import { describeError } from "@/lib/errors";
 import { canMark, roleLabel } from "@/domain/roles";
 import { Avatar, Icon, PageHead, useFeedback } from "@/components/dash/ui";
+import PhoneSettings from "@/components/dash/PhoneSettings";
 
 /**
  * Your profile. Email and role are fixed by the office (the staff RLS
@@ -108,6 +109,8 @@ export default function AccountPage() {
             </form>
             <p className="panel-note" style={{ marginTop: 12 }}>Email and role are set by the school office.</p>
           </section>
+
+          <PhoneSettings />
         </div>
 
         {canMark(user.role) && (

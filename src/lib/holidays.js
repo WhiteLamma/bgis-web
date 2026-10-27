@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { isNotDeployed } from "./errors";
+import { MINUTE, cached } from "./cache";
 
 /**
  * Declared holidays — days the school does not take a register.
@@ -57,6 +58,10 @@ export async function fetchHoliday(day) {
 
 /** Every holiday from `from` onward, soonest first. Used by the calendar. */
 export async function fetchHolidays(from) {
+  return cached(`holidays:${from}`, 5 * MINUTE, () => readHolidays(from));
+}
+
+async function readHolidays(from) {
   const { data, error } = await supabase
     .from("holidays")
     .select("*")

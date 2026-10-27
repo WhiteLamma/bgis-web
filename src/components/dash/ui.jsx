@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { fmtDay, fmtDayCompact, initial, todayISO } from "@/utils/format";
 import { addDays } from "@/lib/report";
+import { haptics } from "@/lib/haptics";
 
 /* ---------- Icons: one stroke family, drawn for 20px ---------- */
 
@@ -28,6 +29,9 @@ const PATHS = {
   print: <><path d="M7 8.5V3.5h10v5M7 17.5H4.5v-7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7H17" /><rect x="7" y="14" width="10" height="6.5" /></>,
   close: <path d="M6 6l12 12M18 6 6 18" />,
   swap: <><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5" /></>,
+  refresh: <><path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v4.5h-4.5" /></>,
+  phone: <><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></>,
+  wifiOff: <><path d="m3 3 18 18M8.5 16.4a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 4.2-2.6M19 12.9a10 10 0 0 0-2.2-1.6M2 9.3a15 15 0 0 1 4.5-2.8M22 9.3a15 15 0 0 0-8.6-3.7" /><circle cx="12" cy="19.5" r=".6" /></>,
   camera: <><path d="M4 8.5h3l1.8-2.5h6.4L17 8.5h3v10.5H4Z" /><circle cx="12" cy="13.5" r="3.4" /></>,
 };
 
@@ -150,8 +154,15 @@ export function FeedbackProvider({ children }) {
 
   const close = useCallback(() => setDialog(null), []);
 
-  const alert = useCallback((opts) => setDialog({ ...opts, kind: "alert" }), []);
-  const confirm = useCallback((opts) => setDialog({ ...opts, kind: "confirm" }), []);
+  const alert = useCallback((opts) => {
+    if (opts.destructive) haptics.error();
+    setDialog({ ...opts, kind: "alert" });
+  }, []);
+  const confirm = useCallback((opts) => {
+    // A warning pulse before anything that cannot be taken back.
+    if (opts.destructive) haptics.warn();
+    setDialog({ ...opts, kind: "confirm" });
+  }, []);
   const show = useCallback((message) => {
     clearTimeout(timer.current);
     setToast(message);

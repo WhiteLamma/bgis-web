@@ -11,6 +11,7 @@ import { canMark, canOverride } from "@/domain/roles";
 import { attendanceStudentLabel } from "@/domain/classGroups";
 import { STATUS_META, statusLabel } from "@/domain/status";
 import { useNow } from "@/lib/clock";
+import { haptics } from "@/lib/haptics";
 import { describeError } from "@/lib/errors";
 import { fmtClock, fmtDay, fmtTime, plural, todayISO } from "@/utils/format";
 import { Chip, Empty, Icon, PageHead, Skeleton, useFeedback } from "@/components/dash/ui";
@@ -111,13 +112,17 @@ export default function DutyPage() {
   const coveringFor = duty.staffId !== user.id ? staffName(duty.staffId) || "another teacher" : null;
   const markedBy = staffName(existing?.submittedBy);
 
-  const setStatus = (sid, code) =>
+  const setStatus = (sid, code) => {
+    if (code === "A") haptics.markAbsent();
+    else if (statuses[sid] === "A") haptics.undoAbsent();
+    else haptics.select();
     setStatuses((prev) => {
       const next = { ...prev };
       if (code === "P") delete next[sid];
       else next[sid] = code;
       return next;
     });
+  };
 
   const markAllPresent = () =>
     setStatuses((prev) => Object.fromEntries(Object.entries(prev).filter(([sid]) => locked[sid])));
@@ -128,6 +133,7 @@ export default function DutyPage() {
     : students;
 
   const fail = (e, title, message) => {
+    haptics.error();
     const d = describeError(e, { title, message }, "Your marks are still here.");
     feedback.alert({ title: d.offline ? d.title : title, message: d.message, destructive: !d.offline });
   };
@@ -136,6 +142,7 @@ export default function DutyPage() {
     setSaving(true);
     try {
       await submitDuty(duty.id, effective, user.id);
+      haptics.success();
       feedback.toast(`${duty.checkpoint} submitted${coveringFor ? ` for ${coveringFor}` : ""} · ${present}/${students.length} present${absent ? `, ${absent} absent` : ""}`);
       router.push("/dashboard/duties");
     } catch (e) {
@@ -149,6 +156,7 @@ export default function DutyPage() {
     setSaving(true);
     try {
       const changed = await overrideDuty(duty.id, effective, user.id);
+      haptics.success();
       feedback.toast(changed === 0 ? "No changes to save" : `${plural(changed, "mark")} amended in ${duty.checkpoint}`);
       router.push("/dashboard/duties");
     } catch (e) {
@@ -159,6 +167,7 @@ export default function DutyPage() {
   };
 
   const onSave = () => {
+    if (isOverride || absent > 0 || coveringFor) haptics.warn();
     if (isOverride) {
       feedback.confirm({
         title: markedBy ? `Overrule ${markedBy}'s submission?` : "Overrule this submission?",

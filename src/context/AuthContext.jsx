@@ -1,9 +1,10 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { fetchStaffMaybeByEmail } from "../lib/staff";
 import { linkStaffAccount } from "../lib/access";
+import { clearCache, setCacheScope } from "../lib/cache";
 
 const AuthContext = createContext(null);
 
@@ -37,6 +38,9 @@ export function AuthProvider({ children }) {
    * the RAW row, so `classKey` was undefined until the next app start and a
    * class teacher lost their "My Class" tab for the rest of the session.
    */
+  // The email last resolved to a staff row, so a repeated SIGNED_IN for the
+  // same account (Supabase sends one when a tab regains focus) costs nothing.
+  const resolvedEmail = useRef(null);
   const resolveSession = useCallback(async (session) => {
     const email = session?.user?.email;
     if (!email) {
@@ -57,6 +61,9 @@ export function AuthProvider({ children }) {
         }
       }
       if (staff) {
+        // Cached reads belong to this account only.
+        setCacheScope(session.user.id);
+        resolvedEmail.current = email;
         setUser(staff);
         setPending(null);
         return staff;
@@ -104,8 +111,12 @@ export function AuthProvider({ children }) {
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return;
       if (event === "SIGNED_OUT") {
+        clearCache();
+        resolvedEmail.current = null;
         setUser(null);
         setPending(null);
+      } else if (event === "SIGNED_IN" && session?.user?.email && session.user.email === resolvedEmail.current) {
+        // Same person, same tab: nothing to look up again.
       } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
         // No `!user` guard here. The old one read a captured value from the
         // effect's first run, so whether it re-resolved depended on when the
@@ -147,6 +158,7 @@ export function AuthProvider({ children }) {
         } catch (e) {
           console.warn("Sign out request failed:", e?.message);
         }
+        clearCache();
         setUser(null);
         setPending(null);
       },

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "./supabase";
+import { cached, invalidate } from "./cache";
 
 /**
  * Persisted resolutions for safety alerts (SRS F4).
@@ -29,6 +30,10 @@ export const fromRow = (r) => ({
 
 /** Resolutions for a day, as `{ "dutyId:admissionNo": resolution }`. */
 export async function fetchResolutions(day) {
+  return cached(`resolutions:${day}`, 45 * 1000, () => readResolutions(day));
+}
+
+async function readResolutions(day) {
   let query = supabase.from("alert_resolutions").select("*, duties!inner(day)");
   if (day) query = query.eq("duties.day", day);
 
@@ -49,6 +54,7 @@ export async function fetchResolutions(day) {
  * the trigger in migrations/008 logs both the original and the correction.
  */
 export async function resolveAlert({ dutyId, admissionNo, kind, remark, staffId }) {
+  invalidate("resolutions:");
   const { data, error } = await supabase
     .from("alert_resolutions")
     .upsert(

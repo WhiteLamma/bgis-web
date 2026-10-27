@@ -4,9 +4,10 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { supabase } from "../lib/supabase";
 import { fetchStudents } from "../lib/students";
 import { fetchStaff } from "../lib/staff";
+import { HOUR, MINUTE, cacheAge, cached, invalidate } from "../lib/cache";
 import {
   fetchDuties,
-  fetchAttendance,
+  fetchAttendanceFor,
   resolveGroup,
   submitDuty as submitDutyToDb,
   overrideAttendance as overrideAttendanceInDb,
@@ -91,39 +92,60 @@ export function SchoolDataProvider({ children }) {
     };
   }, [setDay]);
   const [error, setError] = useState(null);
+  // When the day's data was last read from the server, for "Updated 9:14 AM".
+  const [lastLoaded, setLastLoaded] = useState(null);
 
-  const load = useCallback(async () => {
+  /**
+   * Load the day. Light on the server by design (see lib/cache.js):
+   *  - the register and staff list come from the saved copy when it is fresh
+   *    (6 h and 30 min), so they are not re-downloaded on every visit;
+   *  - a day's duties and all their marks are fetched together and kept for
+   *    45 s, the marks in one paged query rather than one request per duty;
+   *  - `force` re-reads the day (after a write, or the Refresh button);
+   *    `everything` also re-reads the register and staff.
+   * Skeletons only show when there is nothing for this day on screen yet.
+   */
+  const shownDay = useRef(null);
+  const load = useCallback(async ({ force = false, everything = false } = {}) => {
     // A foreground event can arrive between midnight's setDay and its render.
     if (day !== selectedDayRef.current) return;
     const version = ++loadVersion.current;
-    setLoading(true);
+    if (shownDay.current !== day) setLoading(true);
     setError(null);
     try {
-      const [studentRows, staffRows, dutyRows, holidayRow, leaveMap, settingsResult] = await Promise.all([
-        fetchStudents(),
-        fetchStaff(),
-        fetchDuties(day),
-        fetchHoliday(day),
-        fetchOpenLeaves(),
-        supabase.from("app_env").select("key,value").in("key", ["trial_start", "trial_end", "attendance_mode", "attendance_scope"]),
+      const [studentRows, staffRows, bundle, leaveMap, settings] = await Promise.all([
+        cached("students", 6 * HOUR, fetchStudents, { persist: true, force: everything }),
+        cached("staff", 30 * MINUTE, fetchStaff, { persist: true, force: everything }),
+        cached(`day:${day}`, 45 * 1000, async () => {
+          const [dutyRows, holidayRow] = await Promise.all([fetchDuties(day), fetchHoliday(day)]);
+          // Marks only for duties already submitted: pending ones have none.
+          const submitted = dutyRows.filter((d) => d.state === "submitted");
+          const marks = await fetchAttendanceFor(submitted.map((d) => d.id));
+          return { dutyRows, holidayRow, submitted, marks };
+        }, { force }),
+        cached("leaves", 60 * 1000, fetchOpenLeaves, { force }),
+        cached("app_env", HOUR, async () => {
+          const { data } = await supabase
+            .from("app_env")
+            .select("key,value")
+            .in("key", ["trial_start", "trial_end", "attendance_mode", "attendance_scope"]);
+          return Object.fromEntries((data || []).map((row) => [row.key, row.value]));
+        }, { persist: true, force: everything }),
       ]);
-      const settings = Object.fromEntries((settingsResult.data || []).map((row) => [row.key, row.value]));
-      // Pull attendance only for duties already submitted — there is nothing
-      // to fetch for pending ones, and it keeps the initial load small.
-      const submitted = dutyRows.filter((d) => d.state === "submitted");
-      const entries = await Promise.all(
-        submitted.map(async (d) => [
-          d.id,
-          {
-            statuses: await fetchAttendance(d.id),
-            submittedBy: d.submittedBy,
-            submittedAt: d.submittedAt,
-            correctedBy: d.correctedBy,
-            correctedAt: d.correctedAt,
-          },
-        ])
-      );
+      const { dutyRows, holidayRow, submitted, marks } = bundle;
+      const entries = submitted.map((d) => [
+        d.id,
+        {
+          statuses: marks[d.id] || {},
+          submittedBy: d.submittedBy,
+          submittedAt: d.submittedAt,
+          correctedBy: d.correctedBy,
+          correctedAt: d.correctedAt,
+        },
+      ]);
       if (version !== loadVersion.current) return;
+      shownDay.current = day;
+      setLastLoaded(Date.now());
       // Publish duties with their saved marks. A correction screen must never
       // see "submitted" before the absences have arrived.
       setRecords(Object.fromEntries(entries));
@@ -144,15 +166,27 @@ export function SchoolDataProvider({ children }) {
     load();
   }, [load]);
 
-  // A tab left open overnight, or while a colleague submits or reassigns a
-  // duty, is stale when someone comes back to it.
+  // A tab left open while colleagues submit is stale when someone comes back
+  // to it. Coming back re-reads the day only if the copy is over a minute old
+  // (the cache decides), and while the tab is open and visible it checks
+  // every three minutes — a light read, and never while hidden.
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible") load();
     };
+    const poll = setInterval(() => {
+      if (document.visibilityState === "visible") load({ force: (cacheAge(`day:${selectedDayRef.current}`) ?? Infinity) > 3 * MINUTE - 5000 });
+    }, 3 * MINUTE);
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [load]);
+
+  // Every write changes the day's duties or marks: drop the cached day so the
+  // next read is fresh, without fetching now (the screen is updated locally).
+  const dropDay = useCallback((d = selectedDayRef.current) => invalidate(`day:${d}`), []);
 
   /**
    * Cached per duty. `resolveGroup` filters and sorts the whole 415-student
@@ -188,6 +222,7 @@ export function SchoolDataProvider({ children }) {
         statuses,
       });
 
+      dropDay(duty.day);
       if (duty.day !== selectedDayRef.current) return;
       // A request started before this write may still contain "pending".
       // It must not erase a successful submission when it finally arrives.
@@ -204,7 +239,7 @@ export function SchoolDataProvider({ children }) {
         prev.map((d) => (d.id === dutyId ? { ...d, state: "submitted", submittedBy: staffId } : d))
       );
     },
-    [duties, students]
+    [duties, students, dropDay]
   );
 
   /**
@@ -230,6 +265,7 @@ export function SchoolDataProvider({ children }) {
         statuses,
       });
 
+      dropDay(duty.day);
       if (duty.day !== selectedDayRef.current) return changed;
       loadVersion.current += 1;
       setLoading(false);
@@ -246,7 +282,7 @@ export function SchoolDataProvider({ children }) {
       );
       return changed;
     },
-    [duties, students]
+    [duties, students, dropDay]
   );
 
   /**
@@ -261,7 +297,9 @@ export function SchoolDataProvider({ children }) {
   const declareHoliday = useCallback(
     async (input) => {
       const rows = await declareHolidayInDb(input);
-      await load();
+      invalidate("day:");
+      invalidate("holidays");
+      await load({ force: true });
       return rows;
     },
     [load]
@@ -270,7 +308,9 @@ export function SchoolDataProvider({ children }) {
   const cancelHoliday = useCallback(
     async (targetDay) => {
       await cancelHolidayInDb(targetDay);
-      await load();
+      invalidate("day:");
+      invalidate("holidays");
+      await load({ force: true });
     },
     [load]
   );
@@ -287,12 +327,14 @@ export function SchoolDataProvider({ children }) {
    */
   const signStudentOut = useCallback(async (input) => {
     const leave = await signStudentOutInDb(input);
+    invalidate("leaves");
     setOpenLeaves((prev) => ({ ...prev, [leave.adm]: leave }));
     return leave;
   }, []);
 
   const signStudentIn = useCallback(async (adm) => {
     const leave = await signStudentInInDb(adm);
+    invalidate("leaves");
     setOpenLeaves((prev) => {
       const next = { ...prev };
       delete next[adm];
@@ -307,11 +349,12 @@ export function SchoolDataProvider({ children }) {
   const reassignDuty = useCallback(async (dutyId, staffId) => {
     const duty = duties.find((d) => d.id === dutyId);
     await reassignDutyInDb(dutyId, staffId);
+    dropDay(duty?.day);
     if (duty?.day !== selectedDayRef.current) return;
     loadVersion.current += 1;
     setLoading(false);
     setDuties((prev) => prev.map((d) => (d.id === dutyId ? { ...d, staffId } : d)));
-  }, [duties]);
+  }, [duties, dropDay]);
 
 
   /** Directory lookups. `staffName` returns "" for an id that is not in the
@@ -338,7 +381,9 @@ export function SchoolDataProvider({ children }) {
       campusClosed: !!holiday && !holiday.hostelCheckpoints,
       openLeaves,
       leaveFor,
-      refresh: load,
+      // Re-read the day from the server now (the Refresh button, a retry).
+      refresh: () => load({ force: true }),
+      lastLoaded,
       studentsForDuty,
       staffById,
       staffName,
@@ -360,6 +405,7 @@ export function SchoolDataProvider({ children }) {
       error,
       day,
       load,
+      lastLoaded,
       setDay,
       studentsForDuty,
       staffById,

@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { isNotDeployed } from "./errors";
+import { MINUTE, cached } from "./cache";
 
 /**
  * The gate register — a student signed out to family, and signed back in.
@@ -65,6 +66,10 @@ export async function fetchOpenLeaves() {
 
 /** One student's trips off campus, most recent first. For their record card. */
 export async function fetchLeaveHistory(adm, limit = 20) {
+  return cached(`leaves:history:${adm}`, 5 * MINUTE, () => readLeaveHistory(adm, limit));
+}
+
+async function readLeaveHistory(adm, limit) {
   const { data, error } = await supabase
     .from("student_leave")
     .select("*")

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./supabase";
+import { MINUTE, cached } from "./cache";
 import { todayISO } from "../utils/format";
 
 /**
@@ -45,10 +46,17 @@ export function useStudentHistory(admissionNo, days = 30) {
 
     const args = { p_admission: admissionNo, p_from: daysAgo(days), p_to: todayISO() };
 
-    Promise.all([
-      supabase.rpc("student_attendance", args),
-      supabase.rpc("student_attendance_summary", args),
-    ])
+    // Five minutes: a child's record is looked up, not watched.
+    cached(`history:${admissionNo}:${days}:${args.p_to}`, 5 * MINUTE, () =>
+      Promise.all([
+        supabase.rpc("student_attendance", args),
+        supabase.rpc("student_attendance_summary", args),
+      ]).then(([marks, summary]) => {
+        if (marks.error) throw new Error(marks.error.message);
+        if (summary.error) throw new Error(summary.error.message);
+        return [marks, summary];
+      })
+    )
       .then(([marks, summary]) => {
         if (cancelled) return;
         if (marks.error) throw new Error(marks.error.message);
