@@ -41,7 +41,22 @@ export function AuthProvider({ children }) {
   // The email last resolved to a staff row, so a repeated SIGNED_IN for the
   // same account (Supabase sends one when a tab regains focus) costs nothing.
   const resolvedEmail = useRef(null);
-  const resolveSession = useCallback(async (session) => {
+  // The lookup in progress, so the login form and the auth listener resolving
+  // the same sign-in at once make one request, not two.
+  const resolving = useRef(null);
+  const resolveSession = useCallback((session) => {
+    const email = session?.user?.email || null;
+    if (resolving.current && resolving.current.email === email) return resolving.current.promise;
+    const promise = resolveOnce(session).finally(() => {
+      if (resolving.current?.promise === promise) resolving.current = null;
+    });
+    resolving.current = { email, promise };
+    return promise;
+    // resolveOnce only uses refs and state setters, which never change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function resolveOnce(session) {
     const email = session?.user?.email;
     if (!email) {
       setUser(null);
@@ -82,7 +97,7 @@ export function AuthProvider({ children }) {
       setPending(null);
       return null;
     }
-  }, []);
+  }
 
   useEffect(() => {
     let cancelled = false;

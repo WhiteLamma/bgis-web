@@ -100,8 +100,8 @@
   .page-head { margin-bottom: 20px; }
   .page-title { font-size: 26px; }
   .page-sub, .page-lede { font-size: 16px; }
-  .head-actions, .head-actions > * { width: 100%; }
-  .daypick { justify-content: space-between; }
+  .head-actions { width: 100%; }
+  .head-actions .daypick { width: 100%; justify-content: space-between; }
   .panel-head { padding: 18px 18px 10px; }
   .panel-pad, .now-card { padding: 18px; }
   .toolbar { padding: 16px 18px; }
@@ -112,16 +112,21 @@
 
   .tl-name small, .tl-time { display: none; }
 
-  .mark-head { gap: 10px 22px; padding: 14px 18px; top: calc(60px + env(safe-area-inset-top)); border-radius: 18px 18px 0 0; }
-  .mark-head .mark-tools { flex-basis: 100%; justify-content: stretch; }
-  .mark-head .mark-tools > * { flex: 1 1 100%; max-width: none !important; }
+  /* On a phone the children come first: the tally scrolls away, and only the
+     Submit button stays pinned above the tab bar. */
+  .mark-head { position: static; gap: 8px 18px; padding: 14px 18px; border-radius: 18px 18px 0 0; }
+  .tally b { font-size: 24px; }
+  .mark-head .mark-tools { flex-basis: 100%; justify-content: stretch; gap: 8px; }
+  .mark-head .mark-tools .search { flex: 1 1 100%; max-width: none !important; }
+  .mark-head .mark-tools .btn { flex: 1 1 auto; min-height: 44px; }
   .mark-row { padding: 12px 18px; }
   .mark-codes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); justify-content: stretch; }
   .mark-codes .code-btn { min-height: 48px; padding: 0 4px; }
   .mark-codes > .chip { grid-column: 1 / -1; justify-self: start; }
   .mark-more > summary { justify-content: center; width: 100%; }
-  .mark-foot { bottom: calc(70px + env(safe-area-inset-bottom)); padding: 12px 18px; }
-  .mark-foot .btn { width: 100%; }
+  .mark-foot { bottom: calc(70px + env(safe-area-inset-bottom)); padding: 10px 12px; }
+  .mark-foot .panel-note { display: none; }
+  .mark-foot .btn { width: 100%; min-height: 54px !important; }
 
   .row-link { padding: 12px 18px; }
 

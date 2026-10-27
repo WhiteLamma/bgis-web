@@ -408,8 +408,11 @@ button.row-link:disabled { cursor: default; }
 }
 
 @media (max-width: 560px) {
-  .figures { grid-template-columns: minmax(0, 1fr); }
-  .figure + .figure { box-shadow: inset 0 1px 0 var(--panel-strong) !important; }
+  /* Two by two, so the four figures fit on one screen with the day below. */
+  .figure { padding: 16px 18px; }
+  .figure-label { font-size: 15px; }
+  .figure-value { font-size: 30px; }
+  .figure-foot { font-size: 14px; }
   .row-side { padding-left: 0; }
 }
 
