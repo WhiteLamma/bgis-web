@@ -12,8 +12,8 @@ function Icon({ name }) {
   return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
-// Layout and interactions only. A future auth provider can supply onSignIn;
-// credentials are never sent to a mock endpoint or stored by this component.
+// Layout and interactions only. The page supplies onSignIn (Supabase Auth in
+// LoginGate); credentials are never stored by this component.
 export default function LoginForm({ onSignIn }) {
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState("");
@@ -38,8 +38,9 @@ export default function LoginForm({ onSignIn }) {
     setSubmitting(true);
     try {
       await onSignIn({ email: values.get("email").trim(), password: values.get("password").trim() });
-    } catch {
-      setError("Could not sign in. Please check your details and try again.");
+    } catch (e) {
+      // onSignIn throws errors already worded for the person at the keyboard.
+      setError(e?.message || "Could not sign in. Please check your details and try again.");
     } finally {
       setSubmitting(false);
     }

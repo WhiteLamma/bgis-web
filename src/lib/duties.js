@@ -1,0 +1,212 @@
+import { supabase } from "./supabase";
+import { fromRow as studentFromRow } from "./students";
+import { todayISO } from "../utils/format";
+import { classIncludesStudent, isVedicStudent } from "../domain/classGroups";
+
+/**
+ * Duties, and resolving each one to the students it covers.
+ *
+ * Group resolution mirrors SRS Â§3: a duty targets a class-section, a grade
+ * band, residential-only, or the whole school. The rules live here rather
+ * than in a screen so the marking screen and the roster agree on who is in a
+ * group â€” a disagreement there would mean a child silently missing from a
+ * roll call.
+ */
+
+const BANDS = {
+  Primary: [2, 5],
+  Middle: [6, 8],
+  Senior: [9, 12],
+};
+
+/** Day scholars are excluded from residential-only checkpoints (SRS S6). */
+const isResidential = (row) => row.stype !== "Day Scholar";
+
+export const fromRow = (r) => ({
+  id: r.id,
+  checkpointId: r.checkpoint_id,
+  checkpoint: r.checkpoints?.name || r.checkpoint_id,
+  start: r.checkpoints?.start_min ?? 0,
+  end: r.checkpoints?.end_min ?? 0,
+  day: r.day,
+  group: r.group_label,
+  classKey: r.class_key || null,
+  scope: r.scope || null,
+  excludeVedic: !!r.exclude_vedic,
+  band: r.band || null,
+  house: r.house || null,
+  staffId: r.staff_id,
+  pilotWindow: !!r.pilot_window,
+  state: r.state,
+  submittedBy: r.submitted_by || null,
+  submittedAt: r.submitted_at || null,
+  correctedBy: r.corrected_by || null,
+  correctedAt: r.corrected_at || null,
+  mandatoryEscalation: !!r.mandatory_escalation,
+});
+
+/**
+ * Duties for the requested day, with the checkpoint name and time window.
+ * An empty day stays empty; another date must never be presented as today.
+ */
+export async function fetchDuties(day) {
+  // `todayISO()`, not `toISOString().slice(0, 10)`. The latter is the UTC
+  // date: India is +5:30, so between midnight and 5:30am local it names
+  // YESTERDAY. Mangalarati is at 4:30, squarely inside that window â€” the
+  // app would ask for the previous day's duties, and the fallback below
+  // would quietly serve them as though they were today's, already
+  // submitted. `todayISO` exists in utils/format.js for exactly this and
+  // says so in its own comment.
+  const target = day || todayISO();
+
+  const query = () =>
+    supabase.from("duties").select("*, checkpoints(name, start_min, end_min)").order("id");
+
+  let { data, error } = await query().eq("day", target);
+  if (error) throw error;
+
+  return (data || []).map(fromRow).sort((a, b) =>
+    a.start - b.start || a.group.localeCompare(b.group, undefined, { numeric: true })
+  );
+}
+
+/**
+ * Which students a duty covers, resolved against the register.
+ * Pure â€” takes the full student list so callers can fetch it once.
+ *
+ * The narrowings COMPOSE rather than compete, which is what lets one duty be
+ * a row of the Saturday assembly sheet: band cuts by grade, house cuts by
+ * house, and "Middle Â· Nandgaon" is both. `band` and `house` used to be an
+ * either/or with `classKey` on an if/else chain, so a duty carrying both
+ * silently honoured only the first â€” a house teacher would have been handed
+ * every child in the school of their band, four times too many, with nothing
+ * on screen to say the house had been ignored.
+ *
+ * `classKey` stays exclusive: a class is already a single group, and pairing
+ * it with a house would mean a roll call of the three children in 4A who
+ * happen to be in Barsana, which is not a thing anybody marks.
+ */
+export function resolveGroup(duty, students) {
+  if (!duty || !students?.length) return [];
+
+  let pool = students;
+
+  if (duty.classKey) {
+    pool = pool.filter((s) => classIncludesStudent(duty.classKey, s));
+  } else {
+    if (duty.band && BANDS[duty.band]) {
+      const [min, max] = BANDS[duty.band];
+      pool = pool.filter((s) => s.grade >= min && s.grade <= max);
+    }
+    // A house duty covers the children IN that house, so a student with no
+    // house yet matches nothing and is marked by nobody. That is the honest
+    // outcome â€” the alternative is quietly sweeping them into a house they
+    // are not in â€” and it is visible: the printed sheet counts them in its
+    // unmarked column and says the rows do not add up.
+    if (duty.house) pool = pool.filter((s) => s.house === duty.house);
+  }
+
+  if (duty.excludeVedic) pool = pool.filter(s => !isVedicStudent(s));
+
+  if (duty.scope === "res") pool = pool.filter((s) => s.type !== "D");
+
+  return [...pool].sort(
+    (a, b) => a.grade - b.grade || (a.roll || 0) - (b.roll || 0) || a.name.localeCompare(b.name)
+  );
+}
+
+/** Attendance already recorded for a duty, as { admissionNo: statusCode }. */
+export async function fetchAttendance(dutyId) {
+  const { data, error } = await supabase
+    .from("attendance")
+    .select("admission_no, status")
+    .eq("duty_id", dutyId);
+  if (error) throw error;
+
+  const map = {};
+  (data || []).forEach((r) => {
+    // A null status means Present, which is stored as the absence of a value.
+    if (r.status) map[r.admission_no] = r.status;
+  });
+  return map;
+}
+
+/**
+ * Save a submission and lock the duty â€” one atomic call (migrations/010).
+ *
+ * This used to be two statements from the app: upsert the marks, then flip the
+ * duty to 'submitted'. Losing signal between them left attendance saved
+ * against a duty that still read 'pending' â€” a checkpoint that looks unmarked
+ * but is full of marks, which nobody would notice until it escalated.
+ *
+ * The same call handles a correction to an already-submitted record. Which one
+ * happens is decided by the database from the duty's own state, not by the
+ * caller, so the app cannot ask for the wrong one.
+ *
+ * `submitted_by` is NOT passed: the function reads it from the caller's token,
+ * so this app can no longer name somebody else as the person who marked a
+ * checkpoint.
+ *
+ * @returns { marked, changed, absent } â€” `changed` is 0 when a correction
+ *          altered nothing, which the marking screen uses to skip the write.
+ */
+export async function submitDuty({ dutyId, students, statuses }) {
+  const marks = students.map((s) => ({
+    admission_no: s.adm,
+    status: statuses[s.id] || null, // null = Present
+  }));
+
+  const { data, error } = await supabase.rpc("submit_duty", {
+    p_duty_id: dutyId,
+    p_marks: marks,
+  });
+  if (error) throw new Error(error.message);
+
+  // The function returns a single row; PostgREST wraps it in an array.
+  return data?.[0] || { marked: 0, changed: 0, absent: 0 };
+}
+
+/**
+ * Overrule a submitted record (SRS A6).
+ *
+ * Delegates to `submit_duty`, which branches on the duty's state. Passing the
+ * whole group rather than only the changed marks is safe and simpler: the
+ * audit trigger skips rows whose status did not actually change, so a
+ * correction touching one child still writes exactly one audit entry.
+ */
+export async function overrideAttendance({ dutyId, students, statuses }) {
+  const result = await submitDuty({ dutyId, students, statuses });
+  return result.changed;
+}
+
+/** Reassign a duty for today only; the recurring default is untouched (B2). */
+export async function reassignDuty(dutyId, staffId) {
+  const { error } = await supabase.from("duties").update({ staff_id: staffId }).eq("id", dutyId);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * A staff member's own checkpoints that are still unmarked, over a few days.
+ *
+ * Separate from `fetchDuties` because it answers a different question and must
+ * not share that function's behaviour. `fetchDuties` serves the screens, so it
+ * takes the ONE day the user is looking at and falls back to the most recent
+ * day that has duties when today is empty. Reminders need neither: they look
+ * forward across days, and a fallback to last Tuesday would schedule an alarm
+ * for a checkpoint that has already happened.
+ */
+export async function fetchPendingDutiesForStaff(staffId, days) {
+  if (!staffId || !days?.length) return [];
+
+  const { data, error } = await supabase
+    .from("duties")
+    .select("*, checkpoints(name, start_min, end_min)")
+    .eq("staff_id", staffId)
+    .eq("state", "pending")
+    .in("day", days)
+    .order("day")
+    .order("id");
+  if (error) throw error;
+
+  return (data || []).map(fromRow);
+}

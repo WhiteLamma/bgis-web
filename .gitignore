@@ -1,3 +1,41 @@
 node_modules
 .next
 out
+
+# local env files (Supabase keys)
+.env*
+!.env.example
+
+# build output and caches
+build/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+.vercel/
+.turbo/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.pem
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# design-tool working files (taste-skill direction sheet, inspector screenshots)
+.taste-skill/
+
+# Generated copy of the gurukul app's knowledge graph (6 MB, ~1,400 Obsidian
+# notes). Rebuild it with /graphify in the gurukul repo and copy it over;
+# docs/gurukul/ keeps the hand-written reference that is committed.
+docs/gurukul/graph/
+
+# graphify output, if the graph is ever built in this repo
+graphify-out/
+

@@ -1,6 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
-import LoginForm from "@/components/auth/LoginForm";
+import Link from "@/components/transition/TransitionLink";
+import LoginGate from "@/components/auth/LoginGate";
 
 export const metadata = { title: "Sign in" };
 
@@ -23,7 +23,7 @@ export default function LoginPage() {
         <Image className="login-logo" src="/images/app-login-logo.png" alt="Bhaktivedanta Gurukula and International School crest" width={257} height={220} priority />
         <h1 className="login-brand">BG-SAAR</h1>
         <p className="login-school">Bhaktivedanta Gurukula &amp; International School</p>
-        <LoginForm />
+        <LoginGate />
       </div>
     </main>
   );

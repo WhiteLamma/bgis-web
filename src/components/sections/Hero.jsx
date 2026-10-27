@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/transition/TransitionLink";
 import BlurText from "@/components/ui/BlurText";
 import WarpText from "@/components/ui/WarpText/WarpText";
 import HeroVideo from "./HeroVideo";
