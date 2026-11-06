@@ -112,12 +112,17 @@ export function ErrorPanel({ message, onRetry }) {
 /** Previous / date / next. The date opens the browser's own date picker. */
 export function DayPicker({ day, onChange, allowFuture = true }) {
   const today = todayISO();
+  const input = useRef(null);
+  // A hidden date input only opens on its own tiny icon in Chrome, so open it from the whole label.
+  const openPicker = () => {
+    try { input.current?.showPicker(); } catch { input.current?.focus(); }
+  };
   return (
     <div className="daypick">
       <button type="button" onClick={() => onChange(addDays(day, -1))} aria-label="Previous day" title="Previous day"><Icon name="left" size={22} /></button>
-      <label title="Choose a day">
+      <label title="Choose a day" onClick={(e) => { e.preventDefault(); openPicker(); }}>
         {fmtDay(day) === "Today" ? "Today" : fmtDayCompact(day)}
-        <input type="date" value={day} max={allowFuture ? undefined : today} onChange={(e) => e.target.value && onChange(e.target.value)} aria-label="Choose a day" />
+        <input ref={input} type="date" value={day} max={allowFuture ? undefined : today} onChange={(e) => e.target.value && onChange(e.target.value)} aria-label="Choose a day" />
       </label>
       <button type="button" onClick={() => onChange(addDays(day, 1))} disabled={!allowFuture && day >= today} aria-label="Next day" title="Next day"><Icon name="right" size={22} /></button>
       {day !== today && <button type="button" className="daypick-today" onClick={() => onChange(today)}>Back to today</button>}

@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "@/components/transition/TransitionLink";
 import BlurText from "@/components/ui/BlurText";
 import WarpText from "@/components/ui/WarpText/WarpText";
-import HeroVideo from "./HeroVideo";
 
 export default function Hero() {
   return (
@@ -13,7 +12,6 @@ export default function Hero() {
           <Image src="/images/bg-saar-hero-v1.png" alt="" fill priority sizes="100vw" />
         </picture>
       </div>
-      <HeroVideo />
       <div className="hero-crest">
         <Image src="/images/app-login-logo.png" alt="Bhaktivedanta Gurukula & International School crest" width={1024} height={862} priority />
       </div>
