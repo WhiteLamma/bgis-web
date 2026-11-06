@@ -65,7 +65,7 @@ export default function GatePage() {
 
   return (
     <>
-      <PageHead eyebrow="Front desk" title="Gate desk" lede="Sign students out to family and back in. While a student is out, every checkpoint records them as away." />
+      <PageHead title="Gate desk" lede="Sign students out to family and back in. While a student is out, every checkpoint records them as away." />
 
       <div className="grid-2">
         <section className="panel">

@@ -206,7 +206,7 @@ export default function Shell({ children, alertCount = 0 }) {
                 <Icon name={p.icon} size={24} />
                 {counts[p.href] && <span className={`tab-dot ${counts[p.href].tone}`}>{counts[p.href].n}</span>}
               </span>
-              {p.label}
+              <span className="tab-label">{p.label}</span>
             </Link>
           ))}
           <button type="button" className="tab-link" onClick={() => setOpen(true)} aria-expanded={open} aria-controls="main-nav">
@@ -214,7 +214,7 @@ export default function Shell({ children, alertCount = 0 }) {
               <Icon name="menu" size={24} />
               {counts["/dashboard/staff"] && <span className="tab-dot info">{counts["/dashboard/staff"].n}</span>}
             </span>
-            More
+            <span className="tab-label">More</span>
           </button>
         </nav>
       </div>

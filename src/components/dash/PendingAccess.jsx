@@ -65,7 +65,7 @@ export default function PendingAccess({ email }) {
                 ? `Your request was declined${request.decisionNote ? `: “${request.decisionNote}”` : "."} Speak to the school office if you think this is a mistake.`
                 : `You asked for access on ${fmtDay(request.requestedAt?.slice(0, 10))}. A coordinator or the administrator will approve it, and then your duties will appear here.`}
             </p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
               <button className="btn btn-primary" onClick={refreshSession} style={btn}>Check again</button>
               <button className="btn btn-ghost" onClick={logout} style={btnGhost}>Sign out</button>
             </div>

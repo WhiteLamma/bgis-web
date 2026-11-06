@@ -2,6 +2,7 @@
 
 import "./dashboard.css";
 import "./shell.css";
+import "./apple.css";
 import { useEffect } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";

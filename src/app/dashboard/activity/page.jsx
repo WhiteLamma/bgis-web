@@ -84,8 +84,7 @@ export default function ActivityPage() {
   return (
     <>
       <PageHead
-        eyebrow="Activity"
-        title="Log"
+        title="Activity"
         lede={isOversight(user.role) ? "Every submission, cover and correction across the school." : "Your submissions, and anything done to your duties."}
       >
         {isAdmin && <Segmented label="Entries" value={routine} onChange={setRoutine} options={[{ value: "all", label: "Everything" }, { value: "ops", label: "Attendance only" }]} />}

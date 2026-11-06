@@ -74,7 +74,7 @@ export default function AccountPage() {
 
   return (
     <>
-      <PageHead eyebrow="Account" title={user.name} lede={`${roleLabel(user.role)}${user.classLabel ? ` · Class teacher of ${user.classLabel}` : ""}`}>
+      <PageHead title={user.name} lede={`${roleLabel(user.role)}${user.classLabel ? ` · Class teacher of ${user.classLabel}` : ""}`}>
         <button className="btn btn-ghost" onClick={logout}><Icon name="logout" size={18} />Sign out</button>
       </PageHead>
 

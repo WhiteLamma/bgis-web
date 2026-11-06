@@ -8,18 +8,16 @@ import { DUTY_STATUS, dutyStatus, escalationStage, summarise } from "@/domain/du
 import { ALERT_KIND, describeAlert } from "@/domain/alerts";
 import { canCloseAlerts, canMark, isOversight } from "@/domain/roles";
 import { useNow } from "@/lib/clock";
-import { fmtClock, fmtDay, fmtDuration, fmtTime, givenName, plural, todayISO, weekdayOf } from "@/utils/format";
+import { fmtClock, fmtDuration, fmtTime, plural, todayISO, weekdayOf } from "@/utils/format";
 import { Chip, DayPicker, Empty, ErrorPanel, Icon, PageHead, Skeleton } from "@/components/dash/ui";
 import DayTimeline from "@/components/dash/DayTimeline";
 import ResolveAlert from "@/components/dash/ResolveAlert";
 import { useAlerts } from "@/components/dash/useAlerts";
 import { STATUS_UI, byCheckpoint } from "@/components/dash/duty";
 
-const greeting = (now) => (now < 720 ? "Good morning" : now < 1020 ? "Good afternoon" : "Good evening");
-
 /**
  * Today. The screen's one question: is every child accounted for, and is
- * anything late? The greeting answers it in words from the data; the
+ * anything late? The title names the day and its second line answers it in words; the
  * timeline shows the whole day; the "Right now" card has the button for the
  * job that comes up most — opening the checkpoint that is open.
  */
@@ -71,7 +69,7 @@ export default function TodayPage() {
 
   const showAlerts = oversight || user.role === "nurse";
 
-  // The day's one fact, in words, for the second line of the greeting.
+  // The day's one fact, in words, for the second line of the title.
   const fact = loading
     ? ""
     : campusClosed
@@ -90,14 +88,15 @@ export default function TodayPage() {
                   ? `Nothing is late. Next is ${next.checkpoint} at ${fmtTime(next.start)}.`
                   : `${submitted} of ${scoped.length} checkpoints submitted.`;
 
-  const dateLine = `${weekdayOf(day)}, ${new Date(`${day}T00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`;
+  const dateLine = `${weekdayOf(day)}, ${new Date(`${day}T00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "long" })}`;
+  const factBad = !loading && !campusClosed && ((showAlerts && open.length > 0) || overdue > 0);
 
   return (
     <>
       <PageHead
-        title={isToday ? `${greeting(now)}, ${givenName(user.name)}.` : `${fmtDay(day)}.`}
+        title={isToday ? `Today, ${dateLine}` : dateLine}
         fact={fact}
-        eyebrow={dateLine}
+        factBad={factBad}
       >
         <DayPicker day={day} onChange={setDay} />
       </PageHead>

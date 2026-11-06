@@ -63,7 +63,7 @@ export default function ReportsPage() {
 
   return (
     <>
-      <PageHead eyebrow="Print & file" title="Reports" lede="Build a sheet, read it on screen, or print it. Your browser's print dialog can also save it as a PDF." />
+      <PageHead title="Reports" lede="Build a sheet, read it on screen, or print it. Your browser's print dialog can also save it as a PDF." />
 
       <div className="grid-2">
         <section className="panel">

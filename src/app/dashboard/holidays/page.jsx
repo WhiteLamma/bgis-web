@@ -65,7 +65,7 @@ export default function HolidaysPage() {
 
   return (
     <>
-      <PageHead eyebrow="Calendar" title="Holidays" lede="Days the school does not take a register. Declaring one removes that day's pending checkpoints straight away." />
+      <PageHead title="Holidays" lede="Days the school does not take a register. Declaring one removes that day's pending checkpoints straight away." />
       <div className="grid-2">
         <section className="panel">
           <div className="panel-head"><h2 className="panel-title">Coming up</h2></div>

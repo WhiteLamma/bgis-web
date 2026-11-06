@@ -63,13 +63,13 @@ export function Avatar({ name, url, size }) {
  * optional plain sentence. `fact` is a second title line set in grey: the
  * one thing the data says today.
  */
-export function PageHead({ eyebrow, title, fact, lede, children }) {
+export function PageHead({ eyebrow, title, fact, factBad, lede, children }) {
   return (
     <header className="page-head">
       <div>
         <h1 className="page-title">
           {title}
-          {fact && <span className="page-title-fact">{fact}</span>}
+          {fact && <span className={`page-title-fact${factBad ? " is-bad" : ""}`}>{fact}</span>}
         </h1>
         {eyebrow && <p className="page-sub">{eyebrow}</p>}
         {lede && <p className="page-lede">{lede}</p>}

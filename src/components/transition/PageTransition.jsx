@@ -56,6 +56,8 @@ const samePath = (a, b) => {
   }
 };
 
+const inDashboard = (path) => path === "/dashboard" || path.startsWith("/dashboard/");
+
 export function PageTransitionProvider({ children }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -275,6 +277,9 @@ export function PageTransitionProvider({ children }) {
       }
       // Query or hash only: no page is changing, so nothing to cover.
       if (samePath(url.pathname, window.location.pathname)) return go(href, replace);
+      // The feather belongs to the way in (home → login → dashboard).
+      // Moving between dashboard pages is work, so it happens instantly.
+      if (inDashboard(url.pathname) && inDashboard(window.location.pathname)) return go(href, replace);
       // Already mid-flight: the latest destination wins.
       if (running.current) {
         pending.current = { href, replace };

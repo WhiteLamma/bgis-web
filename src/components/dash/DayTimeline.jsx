@@ -35,19 +35,17 @@ export default function DayTimeline({ duties, now, isToday }) {
           <span key={m} style={{ left: pct(m) }}>{fmtTime(m).replace(":00", "")}</span>
         ))}
       </div>
-      {rows.map((r, i) => {
+      {rows.map((r) => {
         const counts = Object.fromEntries(ORDER.map((s) => [s, r.duties.filter((d) => d.status === s).length]));
         return (
           <div className="tl-row" key={r.id}>
             <div className="tl-name" title={r.name}>
               {r.name}
-              <small>{counts.done} of {r.duties.length} done</small>
+              <small>{fmtTime(r.start)} to {fmtTime(r.end)} · {counts.done} of {r.duties.length} done</small>
             </div>
             <div className="tl-track">
               {showNow && (
-                <span className="tl-now" style={{ left: pct(now) }}>
-                  {i === 0 && <span>Now {fmtTime(now)}</span>}
-                </span>
+                <span className="tl-now" style={{ left: pct(now) }} />
               )}
               <Link
                 href={`/dashboard/duties?checkpoint=${encodeURIComponent(r.id)}`}
@@ -58,12 +56,6 @@ export default function DayTimeline({ duties, now, isToday }) {
               >
                 {ORDER.map((s) => counts[s] > 0 && <i key={s} className={BAR[s]} style={{ flex: counts[s] }} />)}
               </Link>
-              {/* The window in words beside its bar; before it when the bar is near the right edge. */}
-              {(r.end - from) / span < 0.75 ? (
-                <span className="tl-time" style={{ left: pct(r.end) }} aria-hidden="true">{fmtTime(r.start)} to {fmtTime(r.end)}</span>
-              ) : (
-                <span className="tl-time before" style={{ left: pct(r.start) }} aria-hidden="true">{fmtTime(r.start)} to {fmtTime(r.end)}</span>
-              )}
             </div>
           </div>
         );
@@ -73,6 +65,7 @@ export default function DayTimeline({ duties, now, isToday }) {
         <span><i style={{ background: "#c99a2e" }} />Open now</span>
         <span><i style={{ background: "var(--negative)" }} />Overdue</span>
         <span><i style={{ background: "var(--panel-strong)", boxShadow: "inset 0 0 0 1.5px var(--control)" }} />Not open yet</span>
+        {showNow && <span><i className="now" />Now, {fmtTime(now)}</span>}
       </div>
     </div>
   );

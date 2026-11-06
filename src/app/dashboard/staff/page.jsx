@@ -96,7 +96,7 @@ export default function StaffPage() {
 
   return (
     <>
-      <PageHead eyebrow="Directory" title="Staff" lede={`${plural(staff.length, "active staff member")}. Duties today are counted beside each name.`} />
+      <PageHead title="Staff" lede={`${plural(staff.length, "active staff member")}. Duties today are counted beside each name.`} />
 
       {approver && (queue.loading || queue.requests.length > 0 || queue.error) && (
         <section className="panel" style={{ marginBottom: 18 }}>

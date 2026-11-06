@@ -54,7 +54,7 @@ export default function StudentPage() {
 
       <div className="grid-2">
         <div>
-          <section className="figures" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+          <section className="figures three">
             <div className="figure is-ok">
               <p className="figure-label">Present</p>
               <p className="figure-value">{sum ? `${Math.round(Number(sum.pct_present) || 0)}` : "—"}<small>%</small></p>
@@ -81,16 +81,16 @@ export default function StudentPage() {
               <Empty>No submitted checkpoints for this student in the last {days} days.</Empty>
             ) : (
               <div className="table-wrap">
-                <table className="table">
+                <table className="table stack">
                   <thead><tr><th>Day</th><th>Checkpoint</th><th>Status</th><th>Marked by</th></tr></thead>
                   <tbody>
                     {[...byDay.entries()].flatMap(([day, marks]) =>
                       marks.map((m, i) => (
                         <tr key={`${day}-${m.checkpoint}-${i}`}>
                           <td className={i ? "cell-sub" : "cell-main"}>{i ? "" : fmtDay(day)}</td>
-                          <td>{m.checkpoint}<span className="cell-sub"> · {fmtTime(m.start_min)}</span></td>
-                          <td>{m.present ? <Chip tone="ok" plain>Present</Chip> : <Chip tone={m.accounted ? "quiet" : "bad"}>{m.status_label || statusLabel(m.status)}</Chip>}</td>
-                          <td className="cell-sub">{m.marked_by || "—"}</td>
+                          <td data-label="Checkpoint">{m.checkpoint}<span className="cell-sub"> · {fmtTime(m.start_min)}</span></td>
+                          <td data-label="Status">{m.present ? <Chip tone="ok" plain>Present</Chip> : <Chip tone={m.accounted ? "quiet" : "bad"}>{m.status_label || statusLabel(m.status)}</Chip>}</td>
+                          <td className="cell-sub" data-label="Marked by">{m.marked_by || "—"}</td>
                         </tr>
                       ))
                     )}
@@ -120,7 +120,7 @@ export default function StudentPage() {
                 {leaves.map((l) => (
                   <li key={l.id} className="row-link" style={{ display: "block" }}>
                     <span className="cell-main">{statusLabel(l.status)} · {fmtDay(l.outDay)}{l.backDay ? ` → ${fmtDay(l.backDay)}` : ""}</span>
-                    <span className="cell-sub" style={{ display: "block" }}>{l.reason || "No reason recorded"}{l.open ? " · still away" : ""}</span>
+                    <span className="cell-sub" style={{ display: "block", overflowWrap: "anywhere" }}>{l.reason || "No reason recorded"}{l.open ? " · still away" : ""}</span>
                   </li>
                 ))}
               </ul>
