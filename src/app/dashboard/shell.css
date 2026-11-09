@@ -117,6 +117,7 @@
   .tally b { font-size: 24px; }
   .mark-head .mark-tools { flex-basis: 100%; justify-content: stretch; gap: 8px; }
   .mark-head .mark-tools .search { flex: 1 1 100%; max-width: none !important; }
+  .mark-head .mark-tools .mark-all { flex: 1 1 100%; }
   .mark-head .mark-tools .btn { flex: 1 1 auto; min-height: 44px; }
   .mark-row { padding: 12px 18px; }
   /* Present and Absent are the longest words, so they get the wider columns. */

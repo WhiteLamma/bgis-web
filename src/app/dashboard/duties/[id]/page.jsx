@@ -21,7 +21,7 @@ import { STATUS_UI } from "@/components/dash/duty";
 // The four answers a teacher gives most, as big worded buttons; the rest
 // sit behind "More…" so a row never becomes a wall of small codes.
 const MAIN_CODES = ["P", "A", "H", "S"];
-const MORE_CODES = ["V", "O", "G", "Y"];
+const MORE_CODES = ["V", "O", "G", "Y", "D"];
 const codeLabel = (c) => (c === "P" ? "Present" : STATUS_META[c].label);
 
 /**
@@ -50,7 +50,8 @@ export default function DutyPage() {
 
   const submitted = duty?.state === "submitted";
   const isOverride = submitted && canOverride(user.role);
-  const outsideWindow = !!duty?.pilotWindow && !isOverride && (duty.day !== todayISO() || now < duty.start || now >= duty.end);
+  // Teachers may mark early or late (041); only a future day stays closed.
+  const outsideWindow = !!duty?.pilotWindow && !isOverride && duty.day > todayISO();
   const readOnly = !canMark(user.role) || (submitted && !isOverride) || outsideWindow;
 
   const [statuses, setStatuses] = useState(existing?.statuses || {});
@@ -124,8 +125,35 @@ export default function DutyPage() {
     });
   };
 
-  const markAllPresent = () =>
-    setStatuses((prev) => Object.fromEntries(Object.entries(prev).filter(([sid]) => locked[sid])));
+  // One status for the whole group. Gate sign-outs keep the gate's mark, and
+  // marks already made are only replaced after a confirm.
+  const markAll = (code) => {
+    if (!code) return;
+    const targets = students.filter((s) => !locked[s.id]);
+    const label = codeLabel(code);
+    const run = () => {
+      setStatuses((prev) => {
+        const next = { ...prev };
+        targets.forEach((s) => {
+          if (code === "P") delete next[s.id];
+          else next[s.id] = code;
+        });
+        return next;
+      });
+      code === "A" ? haptics.warn() : haptics.select();
+      feedback.toast(`${plural(targets.length, "student")} marked ${label}`);
+    };
+    const replacing = targets.filter((s) => statuses[s.id] && statuses[s.id] !== code).length;
+    if (!replacing) return run();
+    feedback.confirm({
+      title: `Mark everyone ${label}?`,
+      message: `This replaces ${plural(replacing, "mark")} already made.`,
+      cancelLabel: "Keep my marks",
+      confirmLabel: `Mark all ${label}`,
+      destructive: code === "A",
+      onConfirm: run,
+    });
+  };
 
   const q = query.trim().toLowerCase();
   const visible = q
@@ -138,12 +166,13 @@ export default function DutyPage() {
     feedback.alert({ title: d.offline ? d.title : title, message: d.message, destructive: !d.offline });
   };
 
+  const remarkRef = useRef(null);
   const doSubmit = async () => {
     setSaving(true);
     try {
-      await submitDuty(duty.id, effective, user.id);
+      const { remarkSaved = true } = (await submitDuty(duty.id, effective, user.id, remarkRef.current?.value || "")) || {};
       haptics.success();
-      feedback.toast(`${duty.checkpoint} submitted${coveringFor ? ` for ${coveringFor}` : ""} · ${present}/${students.length} present${absent ? `, ${absent} absent` : ""}`);
+      feedback.toast(`${duty.checkpoint} submitted${coveringFor ? ` for ${coveringFor}` : ""} · ${present}/${students.length} present${absent ? `, ${absent} absent` : ""}${remarkSaved ? "" : " · remark not saved"}`);
       router.push("/dashboard/duties");
     } catch (e) {
       fail(e, "Not submitted", "Something went wrong saving this. Your marks are still here — try again.");
@@ -177,25 +206,25 @@ export default function DutyPage() {
         destructive: true,
         onConfirm: doOverride,
       });
-    } else if (absent > 0) {
-      feedback.confirm({
-        title: `${plural(absent, "student")} marked absent`,
-        message: "Absent means the child is unaccounted for, and this will raise a safety alert to the Principal. Submit anyway?",
-        cancelLabel: "Review",
-        confirmLabel: "Submit",
-        destructive: true,
-        onConfirm: doSubmit,
-      });
-    } else if (coveringFor) {
-      feedback.confirm({
-        title: `Submit ${duty.checkpoint} for ${coveringFor}?`,
-        message: `${plural(students.length, "student")}, all present. This closes the checkpoint and is recorded as submitted by you.`,
-        cancelLabel: "Review",
-        confirmLabel: "Submit",
-        onConfirm: doSubmit,
-      });
     } else {
-      doSubmit();
+      // One final step for every submit: the count, any warning, and an
+      // optional remark for the office (gurukul 042).
+      feedback.confirm({
+        title: `Submit ${duty.checkpoint}?`,
+        message: `${present}/${students.length} present${elsewhere ? `, ${elsewhere} elsewhere` : ""}${absent ? `, ${absent} absent` : ""}.${
+          absent ? " Absent means unaccounted for — this raises a safety alert to the Principal." : ""
+        }${coveringFor ? ` Submitting for ${coveringFor}; the record will show you submitted it.` : ""}`,
+        body: (
+          <label className="dlg-remark">
+            <span>Remark (optional)</span>
+            <textarea ref={remarkRef} className="input" rows={3} maxLength={500} placeholder="Anything the office should know" />
+          </label>
+        ),
+        cancelLabel: "Review",
+        confirmLabel: "Submit",
+        destructive: absent > 0,
+        onConfirm: doSubmit,
+      });
     }
   };
 
@@ -216,8 +245,9 @@ export default function DutyPage() {
         {esc && <div className="banner bad"><Icon name="alert" /><span><b>{esc.text}.</b> This checkpoint's window {now > duty.end ? "has closed" : "is closing"}.</span></div>}
         {coveringFor && !readOnly && !submitted && <div className="banner wait"><Icon name="info" /><span>You are covering for <b>{coveringFor}</b>. It stays on their roster; the record will show you submitted it.</span></div>}
         {isOverride && <div className="banner wait"><Icon name="info" /><span>You are correcting a submitted register. Every change is written to the activity log.</span></div>}
-        {outsideWindow && <div className="banner info"><Icon name="lock" /><span>This pilot checkpoint can only be marked between {fmtTime(duty.start)} and {fmtTime(duty.end)} on {fmtDay(duty.day)}.</span></div>}
+        {outsideWindow && <div className="banner info"><Icon name="lock" /><span>Marking opens on {fmtDay(duty.day)}.</span></div>}
         {submitted && !isOverride && <div className="banner info"><Icon name="lock" /><span>This register is submitted and locked. Ask a coordinator if a mark needs correcting.</span></div>}
+        {submitted && duty.remark && <div className="banner info"><Icon name="info" /><span><b>Remark:</b> {duty.remark}</span></div>}
         {Object.keys(locked).length > 0 && <div className="banner info"><Icon name="gate" /><span>{plural(Object.keys(locked).length, "student is", "students are")} signed out at the gate and recorded as away until reception signs them back in.</span></div>}
       </div>
 
@@ -232,8 +262,19 @@ export default function DutyPage() {
               <Icon name="search" size={20} />
               <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a child by name or roll" aria-label="Find a child" />
             </div>
-            {!readOnly && marked > Object.keys(locked).length && (
-              <button className="btn btn-ghost" onClick={markAllPresent}>Reset to all present</button>
+            {!readOnly && students.length > 1 && (
+              <select
+                className="input mark-all"
+                value=""
+                onChange={(e) => markAll(e.target.value)}
+                aria-label="Mark everyone in this group"
+              >
+                <option value="" disabled>Mark all…</option>
+                <option value="P">Present</option>
+                {Object.entries(STATUS_META).map(([k, v]) => (
+                  <option key={k} value={k}>{k === "D" ? "YDIV — Your day in Vrindavan" : v.label}</option>
+                ))}
+              </select>
             )}
           </div>
         </div>

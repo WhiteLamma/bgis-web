@@ -31,6 +31,7 @@ const PAGES = [
   { href: "/dashboard/gate", label: "Gate desk", icon: "gate", group: "Office", tab: (u) => u.role === ROLES.RECEPTION, show: (u) => canWorkGate(u.role) },
   { href: "/dashboard/reports", label: "Reports", icon: "reports", group: "Office", show: (u) => canPrintReports(u.role) || !!u.classKey },
   { href: "/dashboard/staff", label: "Staff", icon: "staff", group: "Office", show: (u) => isOversight(u.role) },
+  { href: "/dashboard/timings", label: "Timings", icon: "today", group: "Office", show: (u) => canDeclareHoliday(u.role) },
   { href: "/dashboard/holidays", label: "Holidays", icon: "holiday", group: "Office", show: (u) => canDeclareHoliday(u.role) },
   { href: "/dashboard/activity", label: "Activity", icon: "activity", group: "Records", show: (u) => u.role !== ROLES.RECEPTION },
 ];

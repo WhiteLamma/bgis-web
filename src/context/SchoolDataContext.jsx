@@ -10,6 +10,7 @@ import {
   fetchAttendanceFor,
   resolveGroup,
   submitDuty as submitDutyToDb,
+  saveDutyRemark,
   overrideAttendance as overrideAttendanceInDb,
   reassignDuty as reassignDutyInDb,
 } from "../lib/duties";
@@ -209,7 +210,7 @@ export function SchoolDataProvider({ children }) {
   );
 
   const submitDuty = useCallback(
-    async (dutyId, statuses, staffId) => {
+    async (dutyId, statuses, staffId, remark = "") => {
       const duty = duties.find((d) => d.id === dutyId);
       if (!duty) throw new Error("That duty no longer exists.");
 
@@ -222,8 +223,19 @@ export function SchoolDataProvider({ children }) {
         statuses,
       });
 
+      // The note is a second write; if it fails the marks still stand.
+      const note = remark.trim();
+      let remarkSaved = true;
+      if (note) {
+        try {
+          await saveDutyRemark(dutyId, note);
+        } catch {
+          remarkSaved = false;
+        }
+      }
+
       dropDay(duty.day);
-      if (duty.day !== selectedDayRef.current) return;
+      if (duty.day !== selectedDayRef.current) return { remarkSaved };
       // A request started before this write may still contain "pending".
       // It must not erase a successful submission when it finally arrives.
       loadVersion.current += 1;
@@ -236,8 +248,13 @@ export function SchoolDataProvider({ children }) {
         [dutyId]: { statuses, submittedBy: staffId, submittedAt: new Date().toISOString() },
       }));
       setDuties((prev) =>
-        prev.map((d) => (d.id === dutyId ? { ...d, state: "submitted", submittedBy: staffId } : d))
+        prev.map((d) =>
+          d.id === dutyId
+            ? { ...d, state: "submitted", submittedBy: staffId, remark: remarkSaved && note ? note : null }
+            : d
+        )
       );
+      return { remarkSaved };
     },
     [duties, students, dropDay]
   );

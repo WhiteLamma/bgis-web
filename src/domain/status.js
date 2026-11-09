@@ -12,6 +12,8 @@ export const STATUS_META = {
   O: { label: "Outing", short: "Out" },
   G: { label: "Gita Nagari", short: "GN" },
   Y: { label: "Self study", short: "Self" },
+  // Your day in Vrindavan. Counted like Activity on every sheet (040).
+  D: { label: "YDIV", short: "YDIV" },
 };
 
 /** Statuses that carry over to every later checkpoint until cleared. */
