@@ -13,6 +13,8 @@ import Shell from "@/components/dash/Shell";
 import { FeedbackProvider } from "@/components/dash/ui";
 import { AlertsProvider, useAlerts } from "@/components/dash/useAlerts";
 import PendingAccess from "@/components/dash/PendingAccess";
+import SetPassword from "@/components/dash/SetPassword";
+import { NotificationsProvider } from "@/context/NotificationsContext";
 import { isOversight } from "@/domain/roles";
 
 function Crest({ loading }) {
@@ -46,7 +48,7 @@ export default function DashboardLayout({ children }) {
   useEffect(() => {
     if (restoring) return;
     if (!user && !pending) router.replace("/login");
-    else if (user && !canOpen(user, pathname)) router.replace(homeFor(user));
+    else if (user && !user.mustChangePassword && !canOpen(user, pathname)) router.replace(homeFor(user));
   }, [restoring, user, pending, pathname, router]);
 
   if (restoring || (!user && !pending)) {
@@ -65,12 +67,24 @@ export default function DashboardLayout({ children }) {
     );
   }
 
+  // Signed in with a temporary password from a coordinator (048): nothing
+  // else until they choose their own.
+  if (user.mustChangePassword) {
+    return (
+      <div className="dash" style={{ display: "block" }}>
+        <SetPassword />
+      </div>
+    );
+  }
+
   return (
     <SchoolDataProvider>
       <FeedbackProvider>
-        <AlertsProvider>
-          <StaffFrame>{children}</StaffFrame>
-        </AlertsProvider>
+        <NotificationsProvider>
+          <AlertsProvider>
+            <StaffFrame>{children}</StaffFrame>
+          </AlertsProvider>
+        </NotificationsProvider>
       </FeedbackProvider>
     </SchoolDataProvider>
   );

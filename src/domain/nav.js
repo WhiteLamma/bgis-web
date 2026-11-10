@@ -5,6 +5,7 @@ import {
   canPrintReports,
   canWorkGate,
   isOversight,
+  receivesGateNotices,
 } from "./roles";
 
 /**
@@ -34,6 +35,8 @@ const PAGES = [
   { href: "/dashboard/timings", label: "Timings", icon: "today", group: "Office", show: (u) => canDeclareHoliday(u.role) },
   { href: "/dashboard/holidays", label: "Holidays", icon: "holiday", group: "Office", show: (u) => canDeclareHoliday(u.role) },
   { href: "/dashboard/activity", label: "Activity", icon: "activity", group: "Records", show: (u) => u.role !== ROLES.RECEPTION },
+  // Every gate sign-out and sign-in (migration 047), for the people a missing child escalates to.
+  { href: "/dashboard/notifications", label: "Notifications", icon: "bell", group: "Records", show: (u) => receivesGateNotices(u.role) },
 ];
 
 export const navFor = (user) => (user ? PAGES.filter((p) => p.show(user)) : []);

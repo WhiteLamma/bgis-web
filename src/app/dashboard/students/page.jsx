@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { useTransitionRouter as useRouter } from "@/components/transition/PageTransition";
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolData } from "@/context/SchoolDataContext";
-import { isOversight } from "@/domain/roles";
+import { canAddStudent, isOversight } from "@/domain/roles";
+import AddStudentDialog from "@/components/dash/AddStudentDialog";
 import { classIncludesStudent } from "@/domain/classGroups";
 import { statusLabel } from "@/domain/status";
 import { plural } from "@/utils/format";
@@ -25,6 +26,7 @@ export default function StudentsPage() {
   const [query, setQuery] = useState("");
   const [cls, setCls] = useState(wholeSchool ? "all" : user.classKey || "all");
   const [type, setType] = useState("all");
+  const [adding, setAdding] = useState(false);
 
   const classes = useMemo(() => {
     const seen = new Map();
@@ -47,7 +49,10 @@ export default function StudentsPage() {
         eyebrow={wholeSchool ? "Register" : user.classLabel || "Your class"}
         title="Students"
         lede={wholeSchool ? `${plural(students.length, "student")} on the active register.` : "Your class register. Open a student for their attendance record."}
-      />
+      >
+        {canAddStudent(user.role) && <button className="btn btn-primary" onClick={() => setAdding(true)}>+ Add student</button>}
+      </PageHead>
+      <AddStudentDialog open={adding} onClose={() => setAdding(false)} onAdded={(s) => setQuery(String(s.adm))} />
 
       <section className="panel">
         <div className="toolbar">

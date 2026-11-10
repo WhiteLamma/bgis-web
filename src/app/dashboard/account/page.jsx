@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "@/components/transition/TransitionLink";
 import { useAuth } from "@/context/AuthContext";
+import { badgeCount, useNotifications } from "@/context/NotificationsContext";
 import { updateOwnPhone } from "@/lib/staff";
 import { removeAvatar, uploadAvatar } from "@/lib/avatars";
 import { useMarkingTotals } from "@/lib/history";
@@ -9,6 +11,7 @@ import { describeError } from "@/lib/errors";
 import { canMark, roleLabel } from "@/domain/roles";
 import { Avatar, Icon, PageHead, useFeedback } from "@/components/dash/ui";
 import PhoneSettings from "@/components/dash/PhoneSettings";
+import AddStudentDialog from "@/components/dash/AddStudentDialog";
 
 /**
  * Your profile. Email and role are fixed by the office (the staff RLS
@@ -17,6 +20,8 @@ import PhoneSettings from "@/components/dash/PhoneSettings";
 export default function AccountPage() {
   const { user, updateUser, logout } = useAuth();
   const feedback = useFeedback();
+  const notices = useNotifications();
+  const [addingStudent, setAddingStudent] = useState(false);
   const totals = useMarkingTotals(canMark(user.role) ? user.id : null);
   const [phone, setPhone] = useState(user.phone || "");
   const [savingPhone, setSavingPhone] = useState(false);
@@ -109,6 +114,35 @@ export default function AccountPage() {
             </form>
             <p className="panel-note" style={{ marginTop: 12 }}>Email and role are set by the school office.</p>
           </section>
+
+          {user.role === "teacher" && (
+            <section className="panel panel-pad">
+              <h2 className="panel-title">A new student?</h2>
+              <p className="panel-note">Add a child who has joined a class and is not on the register yet. It is logged under your name.</p>
+              <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={() => setAddingStudent(true)}>+ Add a student</button>
+              <AddStudentDialog open={addingStudent} onClose={() => setAddingStudent(false)} />
+            </section>
+          )}
+
+          {notices.enabled && (
+            <section className="panel">
+              <ul className="rowlist" style={{ padding: 0 }}>
+                <li>
+                  <Link className="row-link" href="/dashboard/notifications">
+                    <Icon name="bell" size={22} />
+                    <span className="row-body">
+                      <span className="cell-main" style={{ display: "block" }}>Notifications</span>
+                      <span className="cell-sub">Gate sign-outs &amp; sign-ins</span>
+                    </span>
+                    <span className="row-side">
+                      {notices.unread > 0 && <span className="badge" aria-label={`${notices.unread} unread`}>{badgeCount(notices.unread)}</span>}
+                      <Icon name="right" size={18} />
+                    </span>
+                  </Link>
+                </li>
+              </ul>
+            </section>
+          )}
 
           <PhoneSettings />
         </div>

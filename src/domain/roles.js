@@ -145,5 +145,46 @@ export const canWorkGate = (role) =>
   role === ROLES.RECEPTION || role === ROLES.TEACHER ||
   role === ROLES.COORDINATOR || role === ROLES.ADMIN;
 
+/**
+ * Told about every gate sign-out and sign-in (migration 047), and given the
+ * Notifications inbox to read back any they missed.
+ *
+ * Coordinator, MOD/management and admin — the people a missing child
+ * escalates to. The `notifications_read` policy enforces the same three.
+ */
+export const receivesGateNotices = (role) =>
+  role === ROLES.COORDINATOR || role === ROLES.MANAGEMENT || role === ROLES.ADMIN;
+
+/**
+ * Creating a login or resetting the password of one staff member.
+ *
+ * A coordinator may act on teachers (and nurse/reception); accounts that carry
+ * authority — coordinator, management, admin — are the administrator's. The
+ * database applies the same rule in `set_temporary_password` and
+ * `issue_password_reset`; this decides which buttons a row offers.
+ */
+export const canManageStaffMember = (actorRole, targetRole) => {
+  if (actorRole === ROLES.ADMIN) return true;
+  if (actorRole !== ROLES.COORDINATOR) return false;
+  return ![ROLES.COORDINATOR, ROLES.MANAGEMENT, ROLES.ADMIN].includes(targetRole);
+};
+
 /** Whether the Duties list should default to "my duties only". */
 export const defaultsToOwnDuties = (role) => role === ROLES.TEACHER;
+
+/**
+ * Adding a student to the register (migration 037).
+ *
+ * Every role that takes a register — teacher included — because the person
+ * who first meets a new child is usually the teacher whose roll call they turn
+ * up in, and a child who is on nobody's list is one no safety alert can ever
+ * fire for. Each addition is logged under the person who made it. Nurse and
+ * reception are excluded: they keep records of their own, not class registers.
+ *
+ * Starting a NEW class stays with coordinator/admin; `add_student` enforces
+ * both rules itself.
+ */
+export const canAddStudent = (role) =>
+  [ROLES.TEACHER, ROLES.COORDINATOR, ROLES.MANAGEMENT, ROLES.ADMIN].includes(role);
+
+export const canStartClass = (role) => role === ROLES.COORDINATOR || role === ROLES.ADMIN;

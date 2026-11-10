@@ -6,6 +6,7 @@ import Link from "@/components/transition/TransitionLink";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolData } from "@/context/SchoolDataContext";
+import { badgeCount, useNotifications } from "@/context/NotificationsContext";
 import { navGroups, tabsFor, titleFor } from "@/domain/nav";
 import { DUTY_STATUS, dutyStatus } from "@/domain/duties";
 import { canApproveStaff, canMark, isOversight, roleLabel } from "@/domain/roles";
@@ -38,6 +39,7 @@ export default function Shell({ children, alertCount = 0 }) {
   const groups = navGroups(user);
   const tabs = tabsFor(user);
   const requests = usePendingRequests(canApproveStaff(user?.role));
+  const notices = useNotifications();
 
   // Close the "More" sheet on navigation.
   useEffect(() => setOpen(false), [pathname]);
@@ -77,7 +79,9 @@ export default function Shell({ children, alertCount = 0 }) {
     "/dashboard": alertCount ? { n: alertCount, label: `${alertCount} children to account for`, tone: "bad" } : null,
     "/dashboard/duties": status.overdue ? { n: status.overdue, label: `${status.overdue} overdue`, tone: "bad" } : null,
     "/dashboard/staff": requests.requests.length ? { n: requests.requests.length, label: `${requests.requests.length} people asking for access`, tone: "info" } : null,
+    "/dashboard/notifications": notices.unread ? { n: badgeCount(notices.unread), label: `${notices.unread} unread gate notifications`, tone: "bad" } : null,
   };
+  const moreCount = counts["/dashboard/staff"] || counts["/dashboard/notifications"];
 
   const isActive = (href) =>
     href === "/dashboard" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
@@ -99,6 +103,7 @@ export default function Shell({ children, alertCount = 0 }) {
     try {
       await refresh();
       requests.reload?.();
+      notices.refresh?.();
     } finally {
       setRefreshing(false);
     }
@@ -212,7 +217,7 @@ export default function Shell({ children, alertCount = 0 }) {
           <button type="button" className="tab-link" onClick={() => setOpen(true)} aria-expanded={open} aria-controls="main-nav">
             <span className="tab-icon">
               <Icon name="menu" size={24} />
-              {counts["/dashboard/staff"] && <span className="tab-dot info">{counts["/dashboard/staff"].n}</span>}
+              {moreCount && <span className={`tab-dot ${moreCount.tone}`}>{moreCount.n}</span>}
             </span>
             <span className="tab-label">More</span>
           </button>

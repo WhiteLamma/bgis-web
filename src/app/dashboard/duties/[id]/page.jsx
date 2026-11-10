@@ -7,7 +7,8 @@ import { useTransitionRouter as useRouter } from "@/components/transition/PageTr
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolData } from "@/context/SchoolDataContext";
 import { dutyStatus, escalationStage } from "@/domain/duties";
-import { canMark, canOverride } from "@/domain/roles";
+import { canMark, canOverride, canWorkGate } from "@/domain/roles";
+import { clearDraft, readDraft, saveDraft } from "@/lib/drafts";
 import { attendanceStudentLabel } from "@/domain/classGroups";
 import { STATUS_META, statusLabel } from "@/domain/status";
 import { useNow } from "@/lib/clock";
@@ -54,8 +55,13 @@ export default function DutyPage() {
   const outsideWindow = !!duty?.pilotWindow && !isOverride && duty.day > todayISO();
   const readOnly = !canMark(user.role) || (submitted && !isOverride) || outsideWindow;
 
-  const [statuses, setStatuses] = useState(existing?.statuses || {});
-  const adopted = useRef(!!existing);
+  // Marks left here when the marker went to sign a child out at the gate.
+  const [draft] = useState(() => readDraft(dutyId));
+  const [statuses, setStatuses] = useState(draft || existing?.statuses || {});
+  const adopted = useRef(!!existing || !!draft);
+  useEffect(() => {
+    clearDraft(dutyId);
+  }, [dutyId]);
   useEffect(() => {
     // Adopt the saved marks once, when they first arrive — never afterwards,
     // so a background refresh cannot wipe marks being made.
@@ -153,6 +159,18 @@ export default function DutyPage() {
       destructive: code === "A",
       onConfirm: run,
     });
+  };
+
+  /**
+   * Going home or leaving campus: open the gate page with this child picked
+   * and the sign-out form open. The unsaved marks wait in a draft and the
+   * gate page comes straight back here, where the child then shows locked.
+   */
+  const gateOut = canWorkGate(user.role);
+  const signOutAtGate = (s) => {
+    saveDraft(dutyId, statuses);
+    const back = `/dashboard/duties/${encodeURIComponent(dutyId)}`;
+    router.push(`/dashboard/gate?signOut=${encodeURIComponent(s.adm)}&back=${encodeURIComponent(back)}`);
   };
 
   const q = query.trim().toLowerCase();
@@ -320,6 +338,19 @@ export default function DutyPage() {
                             {MORE_CODES.includes(code) ? codeLabel(code) : "More…"}
                           </summary>
                           <div className="mark-more-menu">
+                            {gateOut && (
+                              <button
+                                type="button"
+                                className="code-btn gate-out"
+                                title="Going home or leaving campus — carries to every later checkpoint, coordinators are notified"
+                                onClick={(e) => {
+                                  e.currentTarget.closest("details").open = false;
+                                  signOutAtGate(s);
+                                }}
+                              >
+                                <Icon name="exit" size={16} />Sign out at the gate
+                              </button>
+                            )}
                             {MORE_CODES.map((c) => (
                               <button
                                 key={c}

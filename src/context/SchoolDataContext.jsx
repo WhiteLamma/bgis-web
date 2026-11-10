@@ -360,6 +360,20 @@ export function SchoolDataProvider({ children }) {
     return leave;
   }, []);
 
+  /**
+   * Re-read only who is signed out — when a gate notification arrives from
+   * someone else's sign-out or sign-in. Not a full `load()`: nothing else
+   * changed, and the register is 415 students.
+   */
+  const refreshLeaves = useCallback(async () => {
+    try {
+      const map = await cached("leaves", 60 * 1000, fetchOpenLeaves, { force: true });
+      setOpenLeaves(map);
+    } catch {
+      // The next full load will try again; a missed refresh is not an error.
+    }
+  }, []);
+
   /** The open leave for one student, or null. Used per row while marking. */
   const leaveFor = useCallback((adm) => openLeaves[adm] || null, [openLeaves]);
 
@@ -411,6 +425,7 @@ export function SchoolDataProvider({ children }) {
       cancelHoliday,
       signStudentOut,
       signStudentIn,
+      refreshLeaves,
     }),
     [
       students,
@@ -437,6 +452,7 @@ export function SchoolDataProvider({ children }) {
       cancelHoliday,
       signStudentOut,
       signStudentIn,
+      refreshLeaves,
     ]
   );
 

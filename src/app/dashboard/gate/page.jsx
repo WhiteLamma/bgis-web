@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useTransitionRouter as useRouter } from "@/components/transition/PageTransition";
 import { useSchoolData } from "@/context/SchoolDataContext";
 import { SPANNING, statusLabel } from "@/domain/status";
 import { describeError } from "@/lib/errors";
@@ -11,10 +13,29 @@ import { Chip, Empty, ErrorPanel, Icon, PageHead, Skeleton, useFeedback } from "
  * The gate desk: sign a student out to family, and back in. Both are RPCs
  * (migration 034) — the database records who did it and from which day the
  * child reads as away at every checkpoint. Only signing in ends a leave.
+ *
+ * Opened from a register's "Sign out at the gate" with `?signOut=<adm>&back=`,
+ * it starts with that child picked and the form open, and goes back to the
+ * half-marked register once they are signed out.
  */
 export default function GatePage() {
+  // useSearchParams needs a Suspense boundary for the static build.
+  return (
+    <Suspense fallback={<div className="panel"><Skeleton rows={4} /></div>}>
+      <GateDesk />
+    </Suspense>
+  );
+}
+
+function GateDesk() {
   const { students, openLeaves, signStudentOut, signStudentIn, loading, error, refresh } = useSchoolData();
   const feedback = useFeedback();
+  const router = useRouter();
+  const params = useSearchParams();
+  const presetAdm = params.get("signOut");
+  const rawBack = params.get("back");
+  // Only ever back into the dashboard — never an address from somewhere else.
+  const back = rawBack && rawBack.startsWith("/dashboard/") && !rawBack.startsWith("//") ? rawBack : null;
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState(null);
   const [status, setStatus] = useState("H");
@@ -27,6 +48,15 @@ export default function GatePage() {
   const away = Object.values(openLeaves).sort((a, b) => (b.outAt || "").localeCompare(a.outAt || ""));
   const studentOf = (adm) => students.find((s) => s.adm === adm);
 
+  // Pick the child the register sent, once the register has loaded.
+  const preset = useRef(false);
+  useEffect(() => {
+    if (preset.current || !presetAdm || !students.length) return;
+    preset.current = true;
+    const s = students.find((x) => String(x.adm) === presetAdm);
+    if (s && !openLeaves[s.adm]) setPicked(s);
+  }, [presetAdm, students, openLeaves]);
+
   async function signOut(event) {
     event.preventDefault();
     setSaving(true);
@@ -37,6 +67,8 @@ export default function GatePage() {
       setQuery("");
       setReason("");
       setExpected("");
+      // Back to the register they came from; the child now shows locked there.
+      if (back) router.push(back);
     } catch (e) {
       const d = describeError(e, { message: "The student was not signed out." });
       feedback.alert({ title: d.title, message: d.message });
@@ -65,7 +97,9 @@ export default function GatePage() {
 
   return (
     <>
-      <PageHead title="Gate desk" lede="Sign students out to family and back in. While a student is out, every checkpoint records them as away." />
+      <PageHead title="Gate desk" lede="Sign students out to family and back in. While a student is out, every checkpoint records them as away. Coordinators, the MOD and administrators are notified of each one.">
+        {back && <button className="btn btn-ghost" onClick={() => router.push(back)}><Icon name="left" size={18} />Back to the register</button>}
+      </PageHead>
 
       <div className="grid-2">
         <section className="panel">

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "@/components/transition/TransitionLink";
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolData } from "@/context/SchoolDataContext";
+import { useNotifications } from "@/context/NotificationsContext";
 import { DUTY_STATUS, dutyStatus, escalationStage, summarise } from "@/domain/duties";
 import { ALERT_KIND, describeAlert } from "@/domain/alerts";
 import { canCloseAlerts, canMark, isOversight } from "@/domain/roles";
@@ -27,6 +28,8 @@ export default function TodayPage() {
   const { alerts, open, apply } = useAlerts();
   const now = useNow();
   const [resolving, setResolving] = useState(null);
+  const notices = useNotifications();
+  const newestUnread = notices.items.find((n) => !n.read);
 
   const oversight = isOversight(user.role);
   const mine = canMark(user.role) && !oversight;
@@ -106,6 +109,19 @@ export default function TodayPage() {
           <div className="banner info">
             <Icon name="holiday" />
             <span><b>{holiday.label}.</b> {campusClosed ? "The campus is closed, so no registers are taken." : "Classes are off. The hostel checkpoints still run."}</span>
+          </div>
+        </div>
+      )}
+
+      {notices.unread > 0 && (
+        <div className="banners">
+          <div className="banner wait" style={{ alignItems: "center" }}>
+            <Icon name="bell" />
+            <span style={{ flex: 1 }}>
+              <b>{plural(notices.unread, "unread gate notification")}</b>
+              {newestUnread && <><br />{notices.describe(newestUnread).title}</>}
+            </span>
+            <Link href="/dashboard/notifications" className="btn btn-primary btn-sm">Open</Link>
           </div>
         </div>
       )}
