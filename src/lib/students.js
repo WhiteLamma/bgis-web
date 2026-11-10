@@ -126,9 +126,8 @@ export const STUDENT_TYPES = [
 
 /**
  * Add a student (migration 037). Any teacher may add into an existing class;
- * only a coordinator or admin may start a new one — the database checks both.
- * The roll number defaults to the next free one in the class. Returns the
- * app-shaped student. The caller drops the cached register and reloads.
+ * only a coordinator or admin may start a new one. The roll number defaults
+ * to the next free one in the class. Returns the app-shaped student.
  */
 export async function addStudent({ admissionNo, name, grade, section, stype, house, roll }) {
   const { data, error } = await supabase.rpc("add_student", {

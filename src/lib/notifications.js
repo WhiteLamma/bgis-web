@@ -23,7 +23,9 @@ export const fromRow = (r, me) => ({
   actor: r.actor || null,
   actorRole: r.actor_role || null,
   at: r.created_at,
-  read: Array.isArray(r.notification_reads) ? r.notification_reads.some((x) => x.staff_id === me) : false,
+  read: Array.isArray(r.notification_reads)
+    ? r.notification_reads.some((x) => x.staff_id === me)
+    : false,
 });
 
 /** Newest first. `me` is the reader's staff id, for the read flag. */
@@ -54,7 +56,11 @@ export async function markNotificationsRead(ids = null) {
 export function subscribeNotifications(onInsert) {
   const channel = supabase
     .channel(`gate-notices-${Math.random().toString(36).slice(2)}`)
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => onInsert(payload.new))
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "notifications" },
+      (payload) => onInsert(payload.new)
+    )
     .subscribe();
   return () => {
     supabase.removeChannel(channel);

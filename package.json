@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev -p 5180",
     "build": "next build",
-    "start": "next start -p 5180"
+    "start": "next start -p 5180",
+    "sync:check": "node scripts/sync-app.mjs check",
+    "sync:pull": "node scripts/sync-app.mjs pull",
+    "sync:mark": "node scripts/sync-app.mjs mark"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

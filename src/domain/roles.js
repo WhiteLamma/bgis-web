@@ -155,12 +155,25 @@ export const canWorkGate = (role) =>
 export const receivesGateNotices = (role) =>
   role === ROLES.COORDINATOR || role === ROLES.MANAGEMENT || role === ROLES.ADMIN;
 
+/** Whether the Duties list should default to "my duties only". */
+export const defaultsToOwnDuties = (role) => role === ROLES.TEACHER;
+
 /**
- * Creating a login or resetting the password of one staff member.
+ * Running the roster: adding and switching off checkpoints, building the
+ * recurring groups, choosing which students a group covers (migration 036).
+ *
+ * Coordinator and admin — the same people who reassign a duty, for the same
+ * reason. Management reads the board; it does not roster the school.
+ * Every RPC behind this checks `is_roster_desk()` itself.
+ */
+export const canManageRoster = (role) => role === ROLES.COORDINATOR || role === ROLES.ADMIN;
+
+/**
+ * Adding, deactivating and resetting the password of a staff member.
  *
  * A coordinator may act on teachers (and nurse/reception); accounts that carry
  * authority — coordinator, management, admin — are the administrator's. The
- * database applies the same rule in `set_temporary_password` and
+ * database applies the same rule in `set_staff_active` and
  * `issue_password_reset`; this decides which buttons a row offers.
  */
 export const canManageStaffMember = (actorRole, targetRole) => {
@@ -168,9 +181,6 @@ export const canManageStaffMember = (actorRole, targetRole) => {
   if (actorRole !== ROLES.COORDINATOR) return false;
   return ![ROLES.COORDINATOR, ROLES.MANAGEMENT, ROLES.ADMIN].includes(targetRole);
 };
-
-/** Whether the Duties list should default to "my duties only". */
-export const defaultsToOwnDuties = (role) => role === ROLES.TEACHER;
 
 /**
  * Adding a student to the register (migration 037).

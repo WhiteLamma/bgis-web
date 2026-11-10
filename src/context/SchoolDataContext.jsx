@@ -7,13 +7,13 @@ import { fetchStaff } from "../lib/staff";
 import { HOUR, MINUTE, cacheAge, cached, invalidate } from "../lib/cache";
 import {
   fetchDuties,
-  fetchAttendanceFor,
   resolveGroup,
   submitDuty as submitDutyToDb,
   saveDutyRemark,
   overrideAttendance as overrideAttendanceInDb,
   reassignDuty as reassignDutyInDb,
 } from "../lib/duties";
+import { fetchAttendanceFor } from "../lib/attendanceBatch";
 import { fetchHoliday, declareHoliday as declareHolidayInDb, cancelHoliday as cancelHolidayInDb } from "../lib/holidays";
 import {
   fetchOpenLeaves,

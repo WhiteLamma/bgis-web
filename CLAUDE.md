@@ -31,6 +31,18 @@ lists the names. The service-role key and database URL were deliberately not
 copied: never give them a `NEXT_PUBLIC_` prefix, since Next.js ships those to
 the browser.
 
+## Keeping up with the app
+
+The app ships first; this repo follows. `docs/app-parity.md` lists every app
+feature and its web state, `.app-sync.json` records the app commit last
+reviewed, and `/sync-app` (`.claude/skills/sync-app/`) is the catch-up routine.
+
+- Files on the SHARED list in `scripts/sync-app.mjs` are word-for-word copies
+  of the app's. Never edit them here — change the app and `npm run sync:pull`.
+  Web-only code goes in its own file beside them.
+- Before porting anything, pull both repos (`git pull --ff-only`) so work does
+  not start on a stale copy.
+
 ## Rules carried over
 
 - Never change the schema from this repo. Schema changes are migrations in the

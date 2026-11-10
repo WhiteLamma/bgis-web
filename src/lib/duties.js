@@ -43,7 +43,11 @@ export const fromRow = (r) => ({
   submittedAt: r.submitted_at || null,
   correctedBy: r.corrected_by || null,
   correctedAt: r.corrected_at || null,
-  mandatoryEscalation: !!r.mandatory_escalation,
+  mandatoryEscalation: !!(r.mandatory_escalation ?? r.checkpoints?.mandatory_escalation),
+  // Hand-picked groups and per-group exclusions (migration 036).
+  members: r.members || null,
+  excluded: r.excluded || null,
+  defaultId: r.default_id || null,
 });
 
 /**
@@ -92,7 +96,14 @@ export function resolveGroup(duty, students) {
 
   let pool = students;
 
-  if (duty.classKey) {
+  // A hand-picked list IS the group — the class/band/house cut does not
+  // apply. Mirrors `attendance_group_contains` in migration 036 exactly; if
+  // the two disagree, a child is on the screen but refused by the database,
+  // or worse, missing from the screen and never marked.
+  if (duty.members) {
+    const picked = new Set(duty.members);
+    pool = pool.filter((s) => picked.has(s.adm));
+  } else if (duty.classKey) {
     pool = pool.filter((s) => classIncludesStudent(duty.classKey, s));
   } else {
     if (duty.band && BANDS[duty.band]) {
@@ -107,43 +118,18 @@ export function resolveGroup(duty, students) {
     if (duty.house) pool = pool.filter((s) => s.house === duty.house);
   }
 
-  if (duty.excludeVedic) pool = pool.filter(s => !isVedicStudent(s));
+  if (duty.excludeVedic && !duty.members) pool = pool.filter(s => !isVedicStudent(s));
+
+  if (duty.excluded?.length) {
+    const out = new Set(duty.excluded);
+    pool = pool.filter((s) => !out.has(s.adm));
+  }
 
   if (duty.scope === "res") pool = pool.filter((s) => s.type !== "D");
 
   return [...pool].sort(
     (a, b) => a.grade - b.grade || (a.roll || 0) - (b.roll || 0) || a.name.localeCompare(b.name)
   );
-}
-
-/**
- * Marks for many duties in as few requests as possible: one paged query over
- * `duty_id in (...)` instead of one request per duty. Only stored exceptions
- * are fetched (Present is a null status), and the read pages at 1,000 with a
- * stable order (see history.js for why an unpaged read silently drops the
- * absences). Returns `{ [dutyId]: { admissionNo: code } }`.
- */
-export async function fetchAttendanceFor(dutyIds) {
-  const out = Object.fromEntries(dutyIds.map((id) => [id, {}]));
-  if (!dutyIds.length) return out;
-  const PAGE = 1000;
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from("attendance")
-      .select("duty_id, admission_no, status")
-      .in("duty_id", dutyIds)
-      .not("status", "is", null)
-      .order("duty_id")
-      .order("admission_no")
-      .range(from, from + PAGE - 1);
-    if (error) throw error;
-    if (!data || data.length === 0) break;
-    data.forEach((r) => {
-      if (out[r.duty_id]) out[r.duty_id][r.admission_no] = r.status;
-    });
-    if (data.length < PAGE) break;
-  }
-  return out;
 }
 
 /** Attendance already recorded for a duty, as { admissionNo: statusCode }. */
@@ -181,7 +167,10 @@ export async function fetchAttendance(dutyId) {
  * @returns { marked, changed, absent } â€” `changed` is 0 when a correction
  *          altered nothing, which the marking screen uses to skip the write.
  */
-/** The optional note written at the final submit step (gurukul 042). */
+/**
+ * The optional note a teacher writes at the final submit step (042). Saved
+ * after the register itself, so a failed note never costs the marks.
+ */
 export async function saveDutyRemark(dutyId, remark) {
   const { error } = await supabase.rpc("set_duty_remark", { p_duty_id: dutyId, p_remark: remark });
   if (error) throw new Error(error.message);

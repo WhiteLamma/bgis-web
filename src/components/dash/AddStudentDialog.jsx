@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolData } from "@/context/SchoolDataContext";
 import { canStartClass } from "@/domain/roles";
+import { listClasses } from "@/domain/classGroups";
+import { housesIn } from "@/domain/houses";
 import { addStudent, STUDENT_TYPES } from "@/lib/students";
 import { invalidate } from "@/lib/cache";
 import { describeError } from "@/lib/errors";
@@ -21,8 +23,6 @@ import { useFeedback } from "./ui";
  * thing `add_student` refuses a teacher.
  */
 
-const HOUSE_ORDER = ["Vrindavan", "Goverdhan", "Nandgaon", "Barsana"];
-const houseRank = (h) => (HOUSE_ORDER.includes(h) ? HOUSE_ORDER.indexOf(h) : 100);
 const NEW = "__new__";
 
 const blank = (classKey) => ({ admissionNo: "", name: "", classKey: classKey || "", newGrade: "", newSection: "", stype: "Residential", house: "", roll: "" });
@@ -33,18 +33,8 @@ export default function AddStudentDialog({ open, onClose, onAdded }) {
   const feedback = useFeedback();
   const ref = useRef(null);
 
-  const classes = useMemo(() => {
-    const byKey = new Map();
-    for (const s of students) {
-      if (!byKey.has(s.key)) byKey.set(s.key, { key: s.key, label: s.label, grade: s.grade, students: 0 });
-      byKey.get(s.key).students += 1;
-    }
-    return [...byKey.values()].sort((a, b) => Number(a.grade) - Number(b.grade) || a.key.localeCompare(b.key));
-  }, [students]);
-  const houses = useMemo(
-    () => [...new Set(students.map((s) => s.house).filter(Boolean))].sort((a, b) => houseRank(a) - houseRank(b) || a.localeCompare(b)),
-    [students]
-  );
+  const classes = useMemo(() => listClasses(students), [students]);
+  const houses = useMemo(() => housesIn(students), [students]);
   const mayStartClass = canStartClass(user?.role);
   const ownClass = classes.some((c) => c.key === user?.classKey) ? user.classKey : "";
 
