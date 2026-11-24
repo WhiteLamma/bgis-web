@@ -61,7 +61,7 @@ export function NotificationsProvider({ children }) {
         return { title: `${name}${cls} is back on campus`, body: `Signed in by ${by}` };
       }
       const status = STATUS_META[n.status]?.label || n.status || "Away";
-      const reason = n.reason ? ` — ${n.reason}` : "";
+      const reason = n.reason ? ` · ${n.reason}` : "";
       return { title: `${name}${cls} signed out · ${status}`, body: `Signed out by ${by}${reason}` };
     },
     [studentsByAdm, staffName, me]

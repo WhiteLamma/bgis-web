@@ -33,6 +33,9 @@ To catch up, run `/sync-app` (or follow `.claude/skills/sync-app/SKILL.md`).
 | Coordinator trial-window checks | ❓ | Check app commit `54f7968` |
 | Student display names (`displayName`) | ❌ | App commit `747db67` |
 | Duty reminders / phone notifications | n/a | Phone only |
+| App 3a63da7: offline cache, soft refresh, save-PDF-to-folder, tab bar/Account layout | n/a | Phone only; web has its own caching and batches marks via `lib/attendanceBatch.js` |
+| App 3a63da7: notifications ignore empty realtime rows, refetch instead | ❌ | Web `NotificationsContext.jsx` only got the `·` wording; port the empty-row refetch |
+| Migrations 049 (YDIV label), 050 (RLS initplan) | ✅ | Database only; no web change |
 
 ## 2. Shared rule and data files
 
